@@ -1,0 +1,145 @@
+<!-- ═══════════════════════════════════════════════════════════
+     EMPLOYEE TAB PANE  (included by index.html)
+     ═══════════════════════════════════════════════════════════ -->
+
+<div class="tab-pane fade show active" id="employee-tab" role="tabpanel">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar-row" id="empFilterBar">
+    <div class="filter-group">
+      <label>Employee Name</label>
+      <input type="text" id="empFilterName" class="filter-input" list="empNameList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="empNameList"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Employee ID</label>
+      <input type="text" id="empFilterId" class="filter-input" list="empIdList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="empIdList"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Email</label>
+      <input type="text" id="empFilterEmail" class="filter-input" list="empEmailList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="empEmailList"></datalist>
+    </div>
+  </div>
+
+  <!-- ── Sub-Tab Toggle ────────────────────────────────────── -->
+  <div class="emp-subtab-bar">
+    <div class="emp-sub-tabs" id="empSubTabs">
+      <button class="emp-sub-tab active" id="empTabProfile" onclick="switchEmpTab('profile')">
+        <i class="bi bi-person-fill"></i> Profile
+      </button>
+      <button class="emp-sub-tab" id="empTabTimesheet" onclick="switchEmpTab('timesheet')">
+        <i class="bi bi-clock-history"></i> Timesheet
+      </button>
+      <button class="emp-sub-tab" id="empTabHistory" onclick="switchEmpTab('history')">
+        <i class="bi bi-journal-text"></i> History
+      </button>
+    </div>
+
+    <!-- Status dropdown — only visible on Profile sub-tab -->
+    <div class="emp-status-wrap" id="empStatusWrap">
+      <select id="empStatusSelect" class="emp-status-select">
+        <option value="" disabled selected>Set Status</option>
+        <option value="On Bench">🟡 On Bench</option>
+        <option value="On Hold">🔴 On Hold</option>
+        <option value="Blocked">⛔ Blocked</option>
+        <option value="On Project">🟢 On Project</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Panel 1: Profile ──────────────────────────────────── -->
+  <div class="detail-scroll-area emp-sub-panel" id="empDetailPanel">
+    <div class="loading-spinner">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      Loading employee data...
+    </div>
+  </div>
+
+  <!-- ── Panel 2: Timesheet ────────────────────────────────── -->
+  <div class="detail-scroll-area emp-sub-panel" id="empTimesheetPanel" style="display:none">
+
+    <!-- Date-range Controls -->
+    <div class="timesheet-controls">
+      <div class="ts-control-group">
+        <label for="tsFromDate"><i class="bi bi-calendar-event"></i> From</label>
+        <input type="date" id="tsFromDate" class="ts-date-input">
+      </div>
+      <div class="ts-control-group">
+        <label for="tsToDate"><i class="bi bi-calendar-event-fill"></i> To</label>
+        <input type="date" id="tsToDate" class="ts-date-input">
+      </div>
+      <button class="ts-fetch-btn" id="tsFetchBtn" onclick="triggerTimesheetFetch()">
+        <i class="bi bi-search"></i> Fetch
+      </button>
+    </div>
+
+    <!-- Results area -->
+    <div id="empTimesheetResults">
+      <div class="empty-state">
+        <i class="bi bi-clock"></i>
+        <p>Select a date range and click Fetch to load timesheet data.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel 3: History ──────────────────────────────────── -->
+  <div class="detail-scroll-area emp-sub-panel" id="empHistoryPanel" style="display:none">
+
+    <!-- ── Box 1: Status History ──────────────────────────── -->
+    <div class="hist-section-box">
+      <div class="hist-section-header">
+        <i class="bi bi-clock-history"></i>
+        <span>Status History</span>
+      </div>
+      <div id="empStatusHistoryContent">
+        <div class="empty-state">
+          <i class="bi bi-journal-text"></i>
+          <p>Loading status history...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Box 2: Project History ─────────────────────────── -->
+    <div class="hist-section-box" style="margin-top:20px">
+      <div class="hist-section-header">
+        <i class="bi bi-folder2-open"></i>
+        <span>Project History</span>
+      </div>
+      <div id="empProjectHistoryContent">
+        <div class="empty-state">
+          <i class="bi bi-folder"></i>
+          <p>Loading project history...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ── Status Comment Modal ─────────────────────────────────── -->
+<div id="empStatusModalOverlay" class="status-modal-overlay" style="display:none">
+  <div class="status-modal-box">
+    <div class="status-modal-header">
+      <i class="bi bi-pencil-square"></i>
+      <span id="empStatusModalTitle">Update Status</span>
+    </div>
+    <div class="status-modal-body">
+      <label class="status-modal-label" for="empStatusComment">
+        Comments <span class="req-star">*</span>
+        <span class="status-modal-hint">(required)</span>
+      </label>
+      <textarea id="empStatusComment" class="status-modal-textarea" rows="4"
+        placeholder="Add a reason or note for this status change…"></textarea>
+      <div id="empStatusCommentError" class="status-modal-error" style="display:none">
+        <i class="bi bi-exclamation-circle-fill"></i> Comments are required before submitting.
+      </div>
+    </div>
+    <div class="status-modal-footer">
+      <button class="status-btn-cancel" id="empStatusCancelBtn" onclick="_cancelStatusModal()">Cancel</button>
+      <button class="status-btn-submit" id="empStatusSubmitBtn" onclick="_submitStatusModal()">Submit</button>
+    </div>
+  </div>
+</div>

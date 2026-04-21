@@ -1,0 +1,92 @@
+<!-- ═══════════════════════════════════════════════════════════
+     PROJECT TAB PANE  (included by index.html)
+     ═══════════════════════════════════════════════════════════ -->
+
+<div class="tab-pane fade" id="project-tab-pane" role="tabpanel">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar-row" id="projFilterBar">
+    <div class="filter-group">
+      <label>Project Name</label>
+      <input type="text" id="projFilterName" class="filter-input" list="projNameList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="projNameList"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Project Code</label>
+      <input type="text" id="projFilterCode" class="filter-input" list="projCodeList"
+        placeholder="Type to search..." autocomplete="off">
+      <datalist id="projCodeList"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <input type="text" id="projStatus" class="filter-input" readonly>
+    </div>
+  </div>
+
+  <!-- ── Sub-Tab Toggle & Account Manager ──────────────────────── -->
+  <div class="proj-subtab-bar">
+    <!-- Left: Sub-Tabs -->
+    <div class="proj-sub-tabs" id="projSubTabs">
+      <button class="proj-sub-tab active" id="projTabOverview" onclick="switchProjTab('overview')">
+        <i class="bi bi-folder-fill"></i> Overview
+      </button>
+      <button class="proj-sub-tab" id="projTabResources" onclick="switchProjTab('resources')">
+        <i class="bi bi-people-fill"></i> Resources
+      </button>
+    </div>
+
+    <!-- Right: Account Manager -->
+    <div class="emp-status-wrap" id="projManagerWrap">
+      <label for="projManagerSelect"
+        style="font-size: 0.75rem; font-weight: 700; color: var(--clr-text-muted); text-transform: uppercase; margin-bottom: 0;">Account
+        Mgr:</label>
+      <input type="text" id="projManagerSelect" class="emp-status-select" list="projManagerDataList"
+        placeholder="Set Account Manager" autocomplete="off">
+      <datalist id="projManagerDataList"></datalist>
+    </div>
+  </div>
+
+  <!-- ── Panel 1: Overview (existing detail cards) ─────────── -->
+  <div class="detail-scroll-area proj-sub-panel" id="projDetailPanel">
+    <div class="loading-spinner">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      Loading project data...
+    </div>
+  </div>
+
+  <!-- ── Panel 2: Resources ─────────────────────────────────── -->
+  <div class="detail-scroll-area proj-sub-panel" id="projResourcesPanel" style="display:none">
+    <div class="empty-state">
+      <i class="bi bi-people"></i>
+      <p>Select a project and click Resources to load allocation data.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Account Manager Comment Modal overlay
+     ═══════════════════════════════════════════════════════════ -->
+<div class="status-modal-overlay" id="projManagerOverlay" style="display:none">
+  <div class="status-modal-box">
+    <div class="status-modal-header">
+      <i class="bi bi-person-check-fill"></i>
+      <span id="projManagerModalTitle">Assign Account Manager</span>
+    </div>
+    <div class="status-modal-body">
+      <label class="status-modal-label" for="projManagerComment">
+        Comments <span class="req-star">*</span>
+        <span class="status-modal-hint">(required)</span>
+      </label>
+      <textarea id="projManagerComment" class="status-modal-textarea" rows="4"
+        placeholder="Add context or notes for this assignment…"></textarea>
+      <div id="projManagerCommentError" class="status-modal-error" style="display:none">
+        <i class="bi bi-exclamation-circle-fill"></i> Comments are required before submitting.
+      </div>
+    </div>
+    <div class="status-modal-footer">
+      <button class="status-btn-cancel" id="projManagerCancelBtn" onclick="_cancelManagerModal()">Cancel</button>
+      <button class="status-btn-submit" id="projManagerSubmitBtn" onclick="_submitManagerModal()">Submit</button>
+    </div>
+  </div>
+</div>
