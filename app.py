@@ -28,10 +28,12 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_secret_key")
 from backend.employee.routes import employee_bp
 from backend.project.routes import project_bp
 from backend.details.routes import details_bp
+from backend.chatbot.routes import chatbot_bp
 
 app.register_blueprint(employee_bp)
 app.register_blueprint(project_bp)
 app.register_blueprint(details_bp)
+app.register_blueprint(chatbot_bp)
 
 # Track sync status
 _sync_lock = threading.Lock()
