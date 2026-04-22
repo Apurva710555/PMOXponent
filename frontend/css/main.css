@@ -226,21 +226,21 @@ body {
 
 .filter-bar-row {
   display: flex;
-  gap: var(--sp-lg);
+  gap: var(--sp-md);
   padding: var(--sp-md) var(--sp-lg);
   background: var(--clr-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   margin-bottom: var(--sp-lg);
-  flex-wrap: wrap;
   align-items: flex-end;
+  /* NO flex-wrap — all 3 filters must stay on one row */
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  min-width: 200px;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;   /* allow shrinking below content size */
 }
 
 .filter-group label {
@@ -1610,93 +1610,21 @@ body {
   letter-spacing: 0.04em;
 }
 
-/* GRID */
-/* Masonry layout (NO GAPS) */
+/* ====================================================================
+   Employee Dashboard Layout
+   ==================================================================== */
+
 .emp-grid {
-  column-count: 2;
-  column-gap: 12px;
-}
-
-/* Prevent breaking */
-.detail-card {
-  break-inside: avoid;
-  margin-bottom: 12px;
-}
-
-@media (max-width: 768px) {
-  .emp-grid {
-    column-count: 1;
-  }
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--sp-lg);
 }
 
 .emp-bottom {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  margin-top: var(--sp-lg);
 }
 
-/* CARD */
-.detail-card {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-}
-
-/* BLUE HEADER */
-.detail-card-header {
-  background: #2f5ea7;
-  color: #fff;
-  padding: 10px 14px;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-/* BODY */
-.detail-card-body {
-  padding: 0;
-}
-
-/* VERTICAL ROW STYLE */
-.emp-row {
-  padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* REMOVE LAST BORDER */
-.emp-row:last-child {
-  border-bottom: none;
-}
-
-/* LABEL */
-.emp-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-}
-
-/* VALUE */
-.emp-value {
-  font-size: 13px;
-  color: #111827;
-}
-
-/* HOVER LIKE HISTORY */
-.emp-row:hover {
-  background: #f9fafb;
-}
-
-/* REMOVE OLD FIELD STYLES */
-.form-field {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-}
-
-/* RESPONSIVE */
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .emp-grid {
     grid-template-columns: 1fr;
@@ -1723,16 +1651,12 @@ body {
   padding: 10px 20px;
   border: none;
   border-radius: 30px;
-
-  /* ✅ Theme based */
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-hover));
-
   color: #fff;
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-
   box-shadow: 0 2px 8px rgba(36, 91, 174, 0.3);
   transition: all 0.3s ease;
 }
@@ -1746,18 +1670,16 @@ body {
   transform: translateY(0);
 }
 
-
 /* ═══════════════════════════════════════════════════════
-   Sidebar & Sync (Moved back to main)
+   Sidebar & Sync
    ═══════════════════════════════════════════════════════ */
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* important */
+  height: 100vh;
 }
 
-/* PUSH TO BOTTOM */
 .sidebar-sync-wrap {
   margin-top: auto;
   margin-bottom: 30px;
@@ -1765,22 +1687,14 @@ body {
   justify-content: center;
 }
 
-/* ═══════════════════════════════════════════════════════
-   Sync Card (Final — Matches UI Theme)
-   ═══════════════════════════════════════════════════════ */
-
 .sync-card {
   width: 180px;
   padding: 12px;
   border-radius: var(--radius-lg);
-
-  /* ✅ BLUE BACKGROUND LIKE YOUR UI */
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-hover));
-
   color: #fff;
   text-align: center;
   cursor: pointer;
-
   box-shadow: 0 2px 8px rgba(36, 91, 174, 0.35);
   transition: all 0.25s ease;
 }
@@ -1790,72 +1704,24 @@ body {
   box-shadow: 0 6px 18px rgba(36, 91, 174, 0.45);
 }
 
-/* Main row */
 .sync-main {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-
   font-size: 0.85rem;
   font-weight: 600;
   color: #fff;
 }
 
-/* Icon */
 .sync-main i {
   font-size: 0.9rem;
 }
 
-/* Time text */
 .sync-time {
   margin-top: 4px;
   font-size: 0.72rem;
-
-  /* ✅ LIGHT WHITE TEXT */
   color: rgba(255,255,255,0.8);
-}
-
-/* Full width row */
-.proj-row-3 {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-  width: 100%;              /* ✅ full width */
-}
-
-/* Each card should grow equally */
-.proj-row-3 .detail-card {
-  flex: 1 1 0;              /* ✅ equal width */
-  min-width: 0;
-}
-
-/* Each card body → horizontal layout */
-.detail-card-body {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-/* Each field block */
-.emp-row {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Label row (top) */
-.emp-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--clr-text-muted);
-  margin-bottom: 2px;
-}
-
-/* Value row (bottom) */
-.emp-value {
-  font-size: 0.85rem;
-  font-weight: 500;
 }
 
 /* STOP PAGE SCROLL */
