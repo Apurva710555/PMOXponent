@@ -1,0 +1,39 @@
+<!-- ═══════════════════════════════════════════════════════
+     PMOXponent AI CHATBOT POPUP
+     ═══════════════════════════════════════════════════════ -->
+<div class="pmox-chat-overlay" id="pmoxChatOverlay">
+  <div class="pmox-chat-box">
+
+    <div class="pmox-chat-header">
+      <div class="pmox-bot-icon">
+        <i class="bi bi-robot"></i>
+      </div>
+      <div>
+        <div class="pmox-chat-title">Ask PMOXponent</div>
+        <div class="pmox-chat-sub">Powered by AI · Ask anything</div>
+      </div>
+      <button class="pmox-close-btn" onclick="togglePMOXChat()" title="Close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div class="pmox-messages" id="pmoxMessages">
+      <div class="pmox-msg pmox-bot">
+        Hi! I'm PMOXponent AI. Ask me about employees, projects, allocations, or timesheets.
+      </div>
+    </div>
+
+    <div class="pmox-input-row">
+      <input
+        type="text"
+        id="pmoxInput"
+        placeholder="Ask a question..."
+        onkeydown="if(event.key==='Enter') pmoxSend()"
+      />
+      <button onclick="pmoxSend()" title="Send">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+
+  </div>
+</div>

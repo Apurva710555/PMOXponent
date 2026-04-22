@@ -13,6 +13,7 @@
 
   <!-- Main CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='chatbot/chatbot.css') }}">
 </head>
 
 <body>
@@ -100,45 +101,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       PMOXponent AI CHATBOT POPUP
-       ═══════════════════════════════════════════════════════ -->
-  <div class="pmox-chat-overlay" id="pmoxChatOverlay">
-    <div class="pmox-chat-box">
-
-      <div class="pmox-chat-header">
-        <div class="pmox-bot-icon">
-          <i class="bi bi-robot"></i>
-        </div>
-        <div>
-          <div class="pmox-chat-title">Ask PMOXponent</div>
-          <div class="pmox-chat-sub">Powered by AI · Ask anything</div>
-        </div>
-        <button class="pmox-close-btn" onclick="togglePMOXChat()" title="Close">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-
-      <div class="pmox-messages" id="pmoxMessages">
-        <div class="pmox-msg pmox-bot">
-          Hi! I'm PMOXponent AI. Ask me about employees, projects, allocations, or timesheets.
-        </div>
-      </div>
-
-      <div class="pmox-input-row">
-        <input
-          type="text"
-          id="pmoxInput"
-          placeholder="Ask a question..."
-          onkeydown="if(event.key==='Enter') pmoxSend()"
-        />
-        <button onclick="pmoxSend()" title="Send">
-          <i class="bi bi-send-fill"></i>
-        </button>
-      </div>
-
-    </div>
-  </div>
+  {% include 'chatbot/chatbot.html' %}
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -196,63 +159,7 @@
   </script>
 
   <!-- Ask PMOXponent Chatbot Script -->
-  <script>
-    function togglePMOXChat() {
-      const overlay = document.getElementById('pmoxChatOverlay');
-      overlay.classList.toggle('open');
-      if (overlay.classList.contains('open')) {
-        setTimeout(() => document.getElementById('pmoxInput').focus(), 300);
-      }
-    }
-
-    async function pmoxSend() {
-      const input = document.getElementById('pmoxInput');
-      const messages = document.getElementById('pmoxMessages');
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-
-      // User bubble
-      const um = document.createElement('div');
-      um.className = 'pmox-msg pmox-user';
-      um.textContent = text;
-      messages.appendChild(um);
-      messages.scrollTop = messages.scrollHeight;
-
-      // Typing indicator
-      const typing = document.createElement('div');
-      typing.className = 'pmox-msg pmox-bot pmox-typing';
-      typing.innerHTML = '<span></span><span></span><span></span>';
-      messages.appendChild(typing);
-      messages.scrollTop = messages.scrollHeight;
-
-      try {
-        // ── Databricks Genie integration — replace the block below with your endpoint ──
-        // const res = await fetch('/api/genie', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ question: text })
-        // });
-        // const data = await res.json();
-        // typing.classList.remove('pmox-typing');
-        // typing.innerHTML = '';
-        // typing.textContent = data.answer;
-
-        // Placeholder until Genie is wired up
-        await new Promise(r => setTimeout(r, 1000));
-        typing.classList.remove('pmox-typing');
-        typing.innerHTML = '';
-        typing.textContent = 'Connecting to Databricks Genie… (integration coming soon)';
-
-      } catch (err) {
-        typing.classList.remove('pmox-typing');
-        typing.innerHTML = '';
-        typing.textContent = 'Something went wrong. Please try again.';
-      }
-
-      messages.scrollTop = messages.scrollHeight;
-    }
-  </script>
+  <script src="{{ url_for('static', filename='chatbot/chatbot.js') }}"></script>
   <script>
     function updateLastSyncTime() {
       const el = document.getElementById('lastSyncTime');
