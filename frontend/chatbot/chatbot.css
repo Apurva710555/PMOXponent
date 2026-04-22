@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════════
+   Ask PMOXponent Chatbot Component Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* Chat Overlay (Bottom Right Floating) */
+.pmox-chat-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9500;
+  display: none;
+  flex-direction: column;
+}
+
+.pmox-chat-overlay.open {
+  display: flex;
+}
+
+/* Chat Box */
+.pmox-chat-box {
+  width: 340px;
+  height: 460px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: pmoxSlideUp 0.25s cubic-bezier(.34,1.2,.64,1);
+}
+
+@keyframes pmoxSlideUp {
+  from {
+    transform: translateY(24px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Chat Header */
+.pmox-chat-header {
+  background: linear-gradient(135deg, var(--clr-primary, #245BAE), var(--clr-primary-hover, #1d4f9a));
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pmox-bot-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.pmox-chat-title {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.pmox-chat-sub {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.pmox-close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  margin-left: auto;
+  cursor: pointer;
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.pmox-close-btn:hover {
+  opacity: 1;
+}
+
+/* Chat Messages */
+.pmox-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8f9fb;
+}
+
+.pmox-msg {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+/* Bot message */
+.pmox-bot {
+  background: #fff;
+  border: 1px solid #e2e6ea;
+  color: #2d3436;
+  align-self: flex-start;
+  border-bottom-left-radius: 3px;
+}
+
+/* User message */
+.pmox-user {
+  background: linear-gradient(135deg, var(--clr-primary, #245BAE), var(--clr-primary-hover, #1d4f9a));
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+}
+
+/* Input Row */
+.pmox-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--clr-border, #e2e6ea);
+  background: #fff;
+}
+
+.pmox-input-row input {
+  flex: 1;
+  border: 1px solid var(--clr-border, #e2e6ea);
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.pmox-input-row input:focus {
+  border-color: var(--clr-primary, #245BAE);
+}
+
+.pmox-input-row button {
+  background: linear-gradient(135deg, var(--clr-primary, #245BAE), var(--clr-primary-hover, #1d4f9a));
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Typing Animation (AI Thinking) */
+.pmox-typing span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  background: #bbb;
+  border-radius: 50%;
+  animation: pmoxTyping 1.2s infinite;
+}
+
+.pmox-typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.pmox-typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pmoxTyping {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
