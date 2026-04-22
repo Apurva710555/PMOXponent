@@ -1313,27 +1313,25 @@ function _buildCard(title, icon, fields, data) {
   });
   if (fieldsWithData.length === 0) return "";
 
-  const rows = fieldsWithData
+  const WIDE_FIELDS = new Set(["groups"]);
+
+  const fieldHTML = fieldsWithData
     .map((f) => {
+      const isWide = WIDE_FIELDS.has(f);
+      const cls = isWide ? "form-field form-field-wide" : "form-field";
       return `
-        <div class="emp-row">
-          <div class="emp-label">${_formatLabel(f)}</div>
-          <div class="emp-value">${_formatValue(f, data[f])}</div>
-        </div>`;
+            <div class="${cls}">
+                <label>${_formatLabel(f)}</label>
+                <div class="field-value">${_formatValue(f, data[f])}</div>
+            </div>`;
     })
     .join("");
 
   return `
-    <div class="detail-card">
-      <div class="detail-card-header">
-        <i class="bi ${icon}"></i> ${title}
-      </div>
-
-      <div class="detail-card-body emp-vertical">
-        ${rows}
-      </div>
-    </div>
-  `;
+        <div class="detail-card">
+            <div class="detail-card-header"><i class="bi ${icon}"></i> ${title}</div>
+            <div class="detail-card-body">${fieldHTML}</div>
+        </div>`;
 }
 
 function _esc(str) {

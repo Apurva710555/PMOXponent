@@ -5,15 +5,30 @@
 /* Chat Overlay (Bottom Right Floating) */
 .pmox-chat-overlay {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  inset: 0;                  /* cover full screen */
   z-index: 9500;
   display: none;
-  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 24px;             /* push chat box away from edges */
+  pointer-events: none;      /* let clicks pass through to backdrop check */
 }
 
 .pmox-chat-overlay.open {
   display: flex;
+}
+
+/* Backdrop — dims content behind the chat */
+.pmox-chat-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  z-index: -1;               /* behind the chat box */
+  pointer-events: auto;      /* clicking backdrop can close chat */
+  cursor: pointer;
 }
 
 /* Chat Box */
@@ -27,6 +42,9 @@
   flex-direction: column;
   overflow: hidden;
   animation: pmoxSlideUp 0.25s cubic-bezier(.34,1.2,.64,1);
+  pointer-events: auto;      /* re-enable clicks on the box itself */
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes pmoxSlideUp {
