@@ -736,27 +736,12 @@ function _buildProjectHistoryTable(records) {
         : '<span class="sh-empty">—</span>';
       const startDate = r.startdate ? _formatDateShort(r.startdate) : "—";
       const endDate = r.enddate ? _formatDateShort(r.enddate) : "—";
-      const daysWorked = (() => {
-        if (!r.startdate) {
-          return '<span class="sh-empty">—</span>';
-        }
+      const daysWorked = r.days_worked != null ? `${r.days_worked} days` : '<span class="sh-empty">—</span>';
 
-        const start = new Date(r.startdate);
-        const end = r.enddate ? new Date(r.enddate) : new Date();
-
-        if (isNaN(start) || isNaN(end)) {
-          return '<span class="sh-empty">—</span>';
-        }
-
-        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-
-        return `${diff} days`;
-      })();
-
-      const isActive =
-        !r.enddate ||
-        String(r.enddate).trim() === "" ||
-        ["null", "none", ""].includes(String(r.enddate).trim().toLowerCase());
+      const isActive = r.project_status 
+        ? r.project_status === "Active" 
+        : (!r.enddate || String(r.enddate).trim() === "" || ["null", "none", ""].includes(String(r.enddate).trim().toLowerCase()));
+        
       const statusBadge = isActive
         ? '<span class="status-badge badge-active">Active</span>'
         : '<span class="status-badge badge-inactive">Inactive</span>';
@@ -775,11 +760,7 @@ function _buildProjectHistoryTable(records) {
     .join("");
 
   const activeCount = records.filter(
-    (r) =>
-      !r.enddate ||
-      ["null", "none", ""].includes(
-        String(r.enddate || "").trim().toLowerCase(),
-      ),
+    (r) => r.project_status ? r.project_status === "Active" : (!r.enddate || ["null", "none", ""].includes(String(r.enddate || "").trim().toLowerCase()))
   ).length;
 
   return `

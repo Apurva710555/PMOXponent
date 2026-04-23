@@ -72,6 +72,7 @@ def get_project_resources():
     res_tbl  = os.getenv("KEKA_PROJECT_RESOURCES_TABLE", "keka_project_resources")
     emp_tbl  = os.getenv("KEKA_EMPLOYEES_TABLE",          "keka_employees")
     proj_tbl = os.getenv("KEKA_PROJECTS_TABLE",           "keka_projects")
+    time_tbl = os.getenv("KEKA_TIMEENTRIES_TABLE",        "keka_timeentries")
 
     if not all([catalog, schema]):
         return jsonify({"status": "error", "message": "Database env vars missing"}), 500
@@ -80,6 +81,7 @@ def get_project_resources():
     R = f"`{catalog}`.`{schema}`.`{res_tbl}`"
     E = f"`{catalog}`.`{schema}`.`{emp_tbl}`"
     P = f"`{catalog}`.`{schema}`.`{proj_tbl}`"
+    T = f"`{catalog}`.`{schema}`.`{time_tbl}`"
 
     # Active SCD2 employee filter (enddate is null / empty)
     active_emp_cond  = "(e.enddate IS NULL OR e.enddate = '' OR LOWER(e.enddate) IN ('none','null'))"
@@ -92,6 +94,16 @@ def get_project_resources():
         where = f"WHERE LOWER(r.projectid) = LOWER('{safe_id}')"
 
     sql = f"""
+        WITH time_summary AS (
+            SELECT 
+                employeeId, 
+                projectId, 
+                COUNT(DISTINCT date) as actual_days_worked,
+                MIN(date) as first_timesheet_date,
+                MAX(date) as last_timesheet_date
+            FROM {T}
+            GROUP BY employeeId, projectId
+        )
         SELECT
             r.employeeid,
             r.projectid,
@@ -101,13 +113,18 @@ def get_project_resources():
                 NULLIF(CONCAT(COALESCE(e.firstName,''), ' ', COALESCE(e.lastName,'')), ' '),
                 r.employeeid
             )                                                               AS employeeName,
+            e.accountStatus,
             COALESCE(NULLIF(p.name, ''), r.projectid)                      AS projectName,
-            r.startdate,
-            r.enddate,
-            DATEDIFF(
-                TO_DATE(r.enddate),
-                TO_DATE(r.startdate)
-            ) AS days_worked
+            CASE 
+                WHEN r.startdate IS NULL OR r.startdate = '' OR r.startdate = 'None' THEN t.first_timesheet_date
+                ELSE r.startdate
+            END AS startdate,
+            
+            CASE 
+                WHEN r.enddate IS NULL OR r.enddate = '' OR r.enddate = 'None' THEN t.last_timesheet_date
+                ELSE r.enddate
+            END AS enddate,
+            COALESCE(t.actual_days_worked, 0) AS days_worked
         FROM {R} r
         LEFT JOIN {E} e
             ON LOWER(r.employeeid) = LOWER(e.id)
@@ -115,22 +132,28 @@ def get_project_resources():
         LEFT JOIN {P} p
             ON LOWER(r.projectid) = LOWER(p.id)
            AND {active_proj_cond}
+        LEFT JOIN time_summary t
+            ON LOWER(t.projectId) = LOWER(r.projectid) AND LOWER(t.employeeId) = LOWER(r.employeeid)
         {where}
     """
 
     try:
         rows = execute_query(sql)
-        result = [
-            {
-                "employeeName": row.get("employeeName") or row.get("employeeid") or "—",
+        result = []
+        for row in rows:
+            emp_name = row.get("employeeName") or row.get("employeeid") or "—"
+            acc_status = str(row.get("accountStatus")).strip()
+            if acc_status in ("0", "2"):
+                emp_name += " (Ex-Employee)"
+                
+            result.append({
+                "employeeName": emp_name,
                 "projectName":  row.get("projectName")  or row.get("projectid")  or "—",
                 "name":         row.get("allocation")   or "—",
                 "startdate":    row.get("startdate"),
                 "enddate":      row.get("enddate"),
                 "daysWorked":   row.get("days_worked"),
-            }
-            for row in rows
-        ]
+            })
         return jsonify({"status": "success", "data": result})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

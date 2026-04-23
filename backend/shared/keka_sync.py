@@ -66,12 +66,14 @@ _rate_limiter = _RateLimiter(MIN_REQUEST_INTERVAL)
 
 
 # ── Fetch single page with retry ───────────────────────────────────────────────
-def _fetch_page(url: str, headers: dict, page: int) -> Optional[Union[dict, list]]:
+def _fetch_page(url: str, headers: dict, page: int, extra_params: dict = None) -> Optional[Union[dict, list]]:
     """
     Fetch one page with exponential backoff on 429 / 5xx errors.
     Returns parsed JSON body or raises after MAX_RETRIES.
     """
     params = {"pageNumber": page, "pageSize": PAGE_SIZE}
+    if extra_params:
+        params.update(extra_params)
 
     for attempt in range(1, MAX_RETRIES + 1):
         _rate_limiter.wait()
@@ -99,9 +101,9 @@ def _fetch_page(url: str, headers: dict, page: int) -> Optional[Union[dict, list
             else:
                 resp.raise_for_status()  # 4xx that isn't 429 → fail immediately
 
-        except requests.exceptions.ConnectionError as exc:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
             wait = BACKOFF_BASE ** attempt + random.uniform(0, 1)
-            print(f"[WARN] Connection error on page {page} (attempt {attempt}/{MAX_RETRIES}): "
+            print(f"[WARN] Connection/Timeout error on page {page} (attempt {attempt}/{MAX_RETRIES}): "
                   f"{exc}. Sleeping {wait:.1f}s …")
             time.sleep(wait)
 
@@ -109,7 +111,7 @@ def _fetch_page(url: str, headers: dict, page: int) -> Optional[Union[dict, list
 
 
 # ── Paginated fetcher ──────────────────────────────────────────────────────────
-def _fetch_all_pages(url: str, headers: dict) -> list:
+def _fetch_all_pages(url: str, headers: dict, extra_params: dict = None) -> list:
     """
     Fetch all pages from a paginated Keka API endpoint.
 
@@ -131,7 +133,7 @@ def _fetch_all_pages(url: str, headers: dict) -> list:
               (f"/{total_pages}" if total_pages else "") +
               f" from {url}")
 
-        body = _fetch_page(url, headers, page)
+        body = _fetch_page(url, headers, page, extra_params)
 
         # ── Parse response ────────────────────────────────────────────────────
         if isinstance(body, list):
@@ -254,6 +256,70 @@ def sync_keka_data_to_dbx():
         print(f"[ERROR] Project resources sync failed: {e}")
         traceback.print_exc()
         sync_errors.append("project_resources")
+
+    # ── 4. Time Entries (Timesheets) ───────────────────────────────────────────
+    try:
+        import datetime
+        from backend.shared.dbx_utils import execute_query, merge_timeentries
+        
+        time_table = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries")
+        catalog = os.getenv("CATALOG_NAME", "")
+        schema = os.getenv("SCHEMA_NAME", "")
+        
+        time_url = f"{base_url}/api/v1/psa/timeentries"
+        print(f"[INFO] Fetching time entries from: {time_url}")
+        
+        start_date = datetime.date(2026, 1, 1)
+        try:
+            full_table = f"`{catalog}`.`{schema}`.`{time_table}`"
+            res = execute_query(f"SELECT MAX(date) as max_date FROM {full_table}", use_cache=False)
+            if res and res[0].get("max_date"):
+                # max_date string looks like 'YYYY-MM-DD'
+                md_str = res[0]["max_date"]
+                max_dt = datetime.datetime.strptime(md_str.split("T")[0], "%Y-%m-%d").date()
+                # 7-day buffer to capture retro-active timesheet logs or approvals
+                start_date = max_dt - datetime.timedelta(days=7)
+        except Exception as e:
+            print(f"[INFO] Could not fetch MAX(date) from {time_table}, defaulting to {start_date}. (Table might not exist yet)")
+            
+        end_date = datetime.date.today()
+        if start_date > end_date:
+            start_date = end_date
+            
+        all_time_entries = []
+        
+        # Keka restricts to 60 days max. Use 50 days to be safe.
+        current_from = start_date
+        while current_from <= end_date:
+            current_to = min(current_from + datetime.timedelta(days=50), end_date)
+            
+            print(f"[INFO] Fetching time entries from {current_from} to {current_to}")
+            
+            extra_params = {
+                "from": current_from.isoformat(),
+                "to": current_to.isoformat()
+            }
+            
+            chunk_data = _fetch_all_pages(time_url, headers, extra_params=extra_params)
+            
+            if chunk_data:
+                # Keka might occasionally return deeply nested data depending on timeentries API behavior
+                # Ensure we flatten correctly
+                all_time_entries.extend(chunk_data)
+                
+            current_from = current_to + datetime.timedelta(days=1)
+            
+        print(f"[INFO] Fetched total {len(all_time_entries)} time entries.")
+        
+        if all_time_entries:
+            merge_timeentries(time_table, all_time_entries)
+        else:
+            print("[WARN] No time entry data returned from Keka. Skipping merge.")
+
+    except Exception as e:
+        print(f"[ERROR] Time entries sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("time_entries")
 
     # ── Summary ────────────────────────────────────────────────────────────────
     if sync_errors:
