@@ -316,29 +316,29 @@ function _formatProjValue(key, val) {
 //         </div>`;
 // }
 function _buildProjCard(title, icon, fields, data) {
-    const fieldsWithData = fields.filter(f => {
-        if (!(f in data)) return false;
-        return _formatProjValue(f, data[f]) !== '';
-    });
-    if (fieldsWithData.length === 0) return '';
- 
-    const WIDE_FIELDS = new Set(['projectManagers']);
- 
-    const fieldHTML = fieldsWithData.map(f => {
-        const isWide = WIDE_FIELDS.has(f);
-        const cls = isWide ? 'form-field form-field-wide' : 'form-field';
-        return `
-            <div class="${cls}">
-                <label>${_formatProjLabel(f)}</label>
-                <div class="field-value">${_formatProjValue(f, data[f])}</div>
-            </div>`;
-    }).join('');
- 
-    return `
-        <div class="detail-card">
-            <div class="detail-card-header"><i class="bi ${icon}"></i> ${title}</div>
-            <div class="detail-card-body">${fieldHTML}</div>
-        </div>`;
+  const fieldsWithData = fields.filter(f => {
+    if (!(f in data)) return false;
+    return _formatProjValue(f, data[f]) !== '';
+  });
+  if (fieldsWithData.length === 0) return '';
+
+  const rows = fieldsWithData.map(f => `
+    <div class="emp-row">
+      <div class="emp-label">${_formatProjLabel(f)}</div>
+      <div class="emp-value">${_formatProjValue(f, data[f])}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <i class="bi ${icon}"></i> ${title}
+      </div>
+      <div class="detail-card-body">
+        ${rows}
+      </div>
+    </div>
+  `;
 }
  
 function _escP(str) {

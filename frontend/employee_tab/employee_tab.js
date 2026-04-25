@@ -736,13 +736,20 @@ function _buildProjectHistoryTable(records) {
         : '<span class="sh-empty">—</span>';
       const startDate = r.startdate ? _formatDateShort(r.startdate) : "—";
       const endDate = r.enddate ? _formatDateShort(r.enddate) : "—";
+      const comment = r.comment
+        ? _esc(r.comment)
+        : '<span class="sh-empty">—</span>';
+      // const daysWorked =
+      //   r.days_worked != null
+      //     ? `${r.days_worked} days`
+      //     : '<span class="sh-empty">—</span>';
       const daysWorked = (() => {
         if (!r.startdate) {
           return '<span class="sh-empty">—</span>';
         }
 
         const start = new Date(r.startdate);
-        const end = r.enddate ? new Date(r.enddate) : new Date();
+        const end = r.enddate ? new Date(r.enddate) : new Date(); // 👈 key change
 
         if (isNaN(start) || isNaN(end)) {
           return '<span class="sh-empty">—</span>';
@@ -761,14 +768,27 @@ function _buildProjectHistoryTable(records) {
         ? '<span class="status-badge badge-active">Active</span>'
         : '<span class="status-badge badge-inactive">Inactive</span>';
 
+      // return `
+      //     <tr>
+      //         <td class="ph-td-name">${projectName}</td>
+      //         <td class="ph-td-code">${projectCode}</td>
+      //         <td class="ph-td-date">${startDate}</td>
+      //         <td class="ph-td-date">${endDate}</td>
+      //         <td class="ph-td-days">${daysWorked}</td>
+      //         <td class="ph-td-status">${statusBadge}</td>
+      //         <td class="ph-td-comment">${comment}</td>
+      //     </tr>`;
       return `
         <tr>
             <td class="ph-td-name">${projectName}</td>
             <td class="ph-td-code text-center">${projectCode}</td>
+
             <td class="ph-td-date text-center">${startDate}</td>
             <td class="ph-td-date text-center">${endDate}</td>
+
             <td class="ph-td-days text-center">${daysWorked}</td>
             <td class="ph-td-status text-center">${statusBadge}</td>
+            <td class="ph-td-comment text-center">${comment}</td>
         </tr>
       `;
     })
@@ -798,6 +818,7 @@ function _buildProjectHistoryTable(records) {
                       <th class="text-center"><i class="bi bi-calendar-check"></i> End Date</th>
                       <th class="text-center">Days Worked</th>
                       <th class="text-center">Status</th>
+                      <th class="text-center">Comment</th>
                   </tr>
               </thead>
               <tbody>${rows}</tbody>
@@ -1292,25 +1313,27 @@ function _buildCard(title, icon, fields, data) {
   });
   if (fieldsWithData.length === 0) return "";
 
-  const WIDE_FIELDS = new Set(["groups"]);
-
-  const fieldHTML = fieldsWithData
+  const rows = fieldsWithData
     .map((f) => {
-      const isWide = WIDE_FIELDS.has(f);
-      const cls = isWide ? "form-field form-field-wide" : "form-field";
       return `
-            <div class="${cls}">
-                <label>${_formatLabel(f)}</label>
-                <div class="field-value">${_formatValue(f, data[f])}</div>
-            </div>`;
+        <div class="emp-row">
+          <div class="emp-label">${_formatLabel(f)}</div>
+          <div class="emp-value">${_formatValue(f, data[f])}</div>
+        </div>`;
     })
     .join("");
 
   return `
-        <div class="detail-card">
-            <div class="detail-card-header"><i class="bi ${icon}"></i> ${title}</div>
-            <div class="detail-card-body">${fieldHTML}</div>
-        </div>`;
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <i class="bi ${icon}"></i> ${title}
+      </div>
+
+      <div class="detail-card-body emp-vertical">
+        ${rows}
+      </div>
+    </div>
+  `;
 }
 
 function _esc(str) {

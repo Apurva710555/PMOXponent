@@ -21,18 +21,20 @@ def ask():
         return jsonify({"status": "error", "message": "Question is required"}), 400
     
     try:
-        # If no conversation_id, start a new one — the question is sent as the first message
+        # If no conversation_id, start a new one
         if not conversation_id:
             logger.info("No conversation_id provided, starting new Genie conversation.")
-            from backend.shared.dbx_utils import get_dbx_access_token
-            conversation_id, message_id, _ = genie_service.start_conversation(question)
-            token = get_dbx_access_token()
-            answer = genie_service._poll_for_response(conversation_id, message_id, token)
-        else:
-            # Send a follow-up question to the existing conversation
-            logger.info(f"Asking Genie: '{question}' (conversation: {conversation_id})")
-            answer = genie_service.ask_question(conversation_id, question)
-
+            conv = genie_service.start_conversation()
+            conversation_id = conv.get('id')
+            
+        # Send question to Genie and wait for completion
+        logger.info(f"Asking Genie: '{question}' (conversation: {conversation_id})")
+        result = genie_service.ask_question(conversation_id, question)
+        
+        # Extract response text. Databricks Genie might return partial results or tables,
+        # but the primary text description is in 'text'.
+        answer = result.get("text", "I've processed your request, but no text response was returned.")
+        
         return jsonify({
             "status": "success",
             "answer": answer,
