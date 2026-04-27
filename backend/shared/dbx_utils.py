@@ -163,7 +163,7 @@ def sync_to_dbx_table(table_name, data):
                 parts.append(f"'{escaped}'")
         return f"({', '.join(parts)})"
 
-    BATCH_SIZE = 50  # rows per INSERT statement
+    BATCH_SIZE = 500  # rows per INSERT statement
 
     try:
         with get_dbx_connection() as connection:
@@ -246,7 +246,7 @@ def append_to_dbx_table(table_name, data):
                 parts.append(f"'{escaped}'")
         return f"({', '.join(parts)})"
 
-    BATCH_SIZE = 50
+    BATCH_SIZE = 500
 
     try:
         with get_dbx_connection() as connection:
@@ -777,8 +777,11 @@ def scd2_sync_projects(table_name, incoming_data):
                         inserts.append(row)
                     else:
                         current = active_map[proj_key]
+                        # Databricks column returns might have altered capitalization.
+                        # We must search current dictionary case-insensitively.
+                        current_lower = {k.lower(): v for k, v in current.items()}
                         changed = any(
-                            str(_clean(safe_incoming.get(f)) or '') != str(current.get(f) or '')
+                            str(_clean(safe_incoming.get(f)) or '') != str(current_lower.get(f.lower()) or '')
                             for f in _SCD2_PROJ_TRACKED_FIELDS if f in safe_incoming
                         )
 
@@ -916,6 +919,106 @@ def scd2_update_project_manager(table_name, project_id, account_manager, comment
 
     except Exception as e:
         print(f"[ERROR] scd2_update_project_manager failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def merge_timeentries(table_name, data):
+    """
+    Upserts (MERGE) Timesheet entries into Databricks using a temporary staging table to 
+    prevent full truncation. Matches on Keka's internal `id` key.
+    """
+    catalog = os.getenv("CATALOG_NAME")
+    schema = os.getenv("SCHEMA_NAME")
+    
+    if not all([catalog, schema, table_name]):
+        raise ValueError("Missing database configuration.")
+        
+    full_table = f"`{catalog}`.`{schema}`.`{table_name}`"
+    staging_table = f"`{catalog}`.`{schema}`.`{table_name}_staging`"
+    
+    if not data:
+        print("[INFO] No timeentries to merge.")
+        return
+        
+    # Keka pagination can sometimes return duplicate records. 
+    # Databricks MERGE strictly requires unique source rows. Deduplicate by `id`.
+    unique_data = {}
+    for row in data:
+        rid = row.get("id")
+        if rid:
+            unique_data[rid] = row
+            
+    deduped_data = list(unique_data.values())
+    if not deduped_data:
+        print("[INFO] No valid timeentries with IDs to merge.")
+        return
+        
+    cols_list = list(deduped_data[0].keys())
+    
+    def clean_val(v):
+        if isinstance(v, (dict, list)):
+            import json
+            return json.dumps(v)
+        return str(v) if v is not None else None
+        
+    try:
+        with get_dbx_connection() as conn:
+            with conn.cursor() as cursor:
+                # Ensure target table exists
+                col_defs = ", ".join([f"`{c}` STRING" for c in cols_list])
+                cursor.execute(f"CREATE TABLE IF NOT EXISTS {full_table} ({col_defs})")
+                
+                # Drop and recreate empty staging table
+                cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                cursor.execute(f"CREATE TABLE {staging_table} LIKE {full_table}")
+                
+                # Bulk insert into staging using large batch size
+                BATCH_SIZE = 500
+                columns_str = ", ".join([f"`{c}`" for c in cols_list])
+                total = len(deduped_data)
+                
+                print(f"[INFO] Merging {total} records via staging table...")
+                
+                for i in range(0, total, BATCH_SIZE):
+                    batch = deduped_data[i:i+BATCH_SIZE]
+                    parts = []
+                    for row in batch:
+                        row_parts = []
+                        for col in cols_list:
+                            v = clean_val(row.get(col))
+                            if v is None:
+                                row_parts.append("NULL")
+                            else:
+                                escaped = v.replace("\\", "\\\\").replace("'", "\\'")
+                                row_parts.append(f"'{escaped}'")
+                        parts.append(f"({', '.join(row_parts)})")
+                        
+                    values_str = ", ".join(parts)
+                    cursor.execute(f"INSERT INTO {staging_table} ({columns_str}) VALUES {values_str}")
+                    
+                # Perform the MERGE INTO the permanent target table
+                merge_sql = f"""
+                MERGE INTO {full_table} target
+                USING {staging_table} source
+                ON target.id = source.id
+                WHEN MATCHED THEN
+                  UPDATE SET *
+                WHEN NOT MATCHED THEN
+                  INSERT *
+                """
+                cursor.execute(merge_sql)
+                
+                # Clean up staging table
+                cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                
+            if hasattr(conn, "commit"):
+                conn.commit()
+                
+        print(f"[INFO] Successfully merged timeentries into {full_table}.")
+        
+    except Exception as e:
+        print(f"[ERROR] merge_timeentries failed: {e}")
         import traceback
         traceback.print_exc()
         raise

@@ -22,7 +22,8 @@ def get_employee_data():
 
         sql = (
             f"SELECT * FROM `{catalog}`.`{schema}`.`{table_name}` "
-            f"WHERE enddate IS NULL OR enddate = '' OR enddate = 'None'"
+            f"WHERE (enddate IS NULL OR enddate = '' OR enddate = 'None') "
+            f"AND (accountStatus = 1 OR accountStatus = '1')"
         )
         from backend.shared.dbx_utils import execute_query
         active = execute_query(sql)
@@ -344,6 +345,7 @@ def get_employee_project_history():
     resources_table = os.getenv("KEKA_EMPLOYEE_PROJECT_RESOURCES", "").strip()
     projects_table  = os.getenv("KEKA_PROJECTS_TABLE", "").strip()
     employee_table  = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees").strip()
+    time_table      = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries").strip()
     catalog         = os.getenv("CATALOG_NAME", "").strip()
     schema          = os.getenv("SCHEMA_NAME", "").strip()
 
@@ -399,6 +401,17 @@ def get_employee_project_history():
                 SELECT id, displayName, employeeNumber
                 FROM `{catalog}`.`{schema}`.`{employee_table}`
                 WHERE employeeNumber = '{safe_emp_id}'
+            ),
+            time_summary AS (
+                SELECT 
+                    employeeId, 
+                    projectId, 
+                    COUNT(DISTINCT date) as actual_days_worked,
+                    SUM(CAST(totalMinutes AS DOUBLE)) as total_minutes_worked,
+                    MIN(date) as first_timesheet_date,
+                    MAX(date) as last_timesheet_date
+                FROM `{catalog}`.`{schema}`.`{time_table}`
+                GROUP BY employeeId, projectId
             )
 
             SELECT
@@ -410,9 +423,33 @@ def get_employee_project_history():
                 p.code AS projectCode,
 
                 r.projectId,
-                MIN(r.startdate) AS startdate,
-                MAX(r.enddate) AS enddate,
-                MAX(r.comment) AS comment
+                CASE 
+                    WHEN MIN(r.startdate) IS NULL OR MIN(r.startdate) = '' OR MIN(r.startdate) = 'None' THEN MAX(t.first_timesheet_date)
+                    ELSE MIN(r.startdate)
+                END AS startdate,
+                
+                CASE 
+                    WHEN MAX(r.enddate) IS NULL OR MAX(r.enddate) = '' OR MAX(r.enddate) = 'None' THEN MAX(t.last_timesheet_date)
+                    ELSE MAX(r.enddate)
+                END AS enddate,
+                MAX(r.comment) AS comment,
+                
+                CASE 
+                    WHEN MAX(p.enddate) IS NOT NULL 
+                         AND MAX(p.enddate) != '' 
+                         AND MAX(p.enddate) != 'None' 
+                         AND CAST(SUBSTRING(MAX(p.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    THEN 'Inactive'
+                    WHEN MAX(r.enddate) IS NOT NULL 
+                         AND MAX(r.enddate) != '' 
+                         AND MAX(r.enddate) != 'None' 
+                         AND CAST(SUBSTRING(MAX(r.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    THEN 'Inactive'
+                    ELSE 'Active'
+                END AS project_status,
+                
+                COALESCE(MAX(t.actual_days_worked), 0) AS days_worked,
+                ROUND(COALESCE(MAX(t.total_minutes_worked), 0) / 60.0, 1) AS hours_worked
 
             FROM emp e
 
@@ -421,6 +458,9 @@ def get_employee_project_history():
 
             JOIN `{catalog}`.`{schema}`.`{projects_table}` p
                 ON r.projectId = p.id
+                
+            LEFT JOIN time_summary t
+                ON LOWER(t.projectId) = LOWER(r.projectId) AND LOWER(t.employeeId) = LOWER(r.employeeId)
 
             GROUP BY
                 e.displayName,
@@ -435,11 +475,7 @@ def get_employee_project_history():
 
         rows = execute_query(sql) or []
 
-        for row in rows:
-            ed = str(row.get('enddate') or '').strip().lower()
-            if ed in ('', 'none', 'null'):
-                row['enddate'] = None   # signal "Active"
-
+        # Databricks SQL calculates exact project_status and dynamic enddate now
         return jsonify({"status": "success", "data": rows})
 
     except Exception as e:

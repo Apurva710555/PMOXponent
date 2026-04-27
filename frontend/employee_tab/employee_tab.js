@@ -736,38 +736,25 @@ function _buildProjectHistoryTable(records) {
         : '<span class="sh-empty">—</span>';
       const startDate = r.startdate ? _formatDateShort(r.startdate) : "—";
       const endDate = r.enddate ? _formatDateShort(r.enddate) : "—";
-      const daysWorked = (() => {
-        if (!r.startdate) {
-          return '<span class="sh-empty">—</span>';
-        }
+      const daysWorked = r.days_worked != null ? `${r.days_worked} days` : '<span class="sh-empty">—</span>';
+      const hoursWorked = r.hours_worked != null ? `${r.hours_worked} hrs` : '<span class="sh-empty">—</span>';
 
-        const start = new Date(r.startdate);
-        const end = r.enddate ? new Date(r.enddate) : new Date();
-
-        if (isNaN(start) || isNaN(end)) {
-          return '<span class="sh-empty">—</span>';
-        }
-
-        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-
-        return `${diff} days`;
-      })();
-
-      const isActive =
-        !r.enddate ||
-        String(r.enddate).trim() === "" ||
-        ["null", "none", ""].includes(String(r.enddate).trim().toLowerCase());
+      const isActive = r.project_status 
+        ? r.project_status === "Active" 
+        : (!r.enddate || String(r.enddate).trim() === "" || ["null", "none", ""].includes(String(r.enddate).trim().toLowerCase()));
+        
       const statusBadge = isActive
         ? '<span class="status-badge badge-active">Active</span>'
         : '<span class="status-badge badge-inactive">Inactive</span>';
 
       return `
         <tr>
-            <td class="ph-td-name">${projectName}</td>
+            <td class="ph-td-name" style="white-space: normal; word-break: break-word; max-width: 250px;">${projectName}</td>
             <td class="ph-td-code text-center">${projectCode}</td>
             <td class="ph-td-date text-center">${startDate}</td>
             <td class="ph-td-date text-center">${endDate}</td>
             <td class="ph-td-days text-center">${daysWorked}</td>
+            <td class="ph-td-hours text-center">${hoursWorked}</td>
             <td class="ph-td-status text-center">${statusBadge}</td>
         </tr>
       `;
@@ -775,11 +762,7 @@ function _buildProjectHistoryTable(records) {
     .join("");
 
   const activeCount = records.filter(
-    (r) =>
-      !r.enddate ||
-      ["null", "none", ""].includes(
-        String(r.enddate || "").trim().toLowerCase(),
-      ),
+    (r) => r.project_status ? r.project_status === "Active" : (!r.enddate || ["null", "none", ""].includes(String(r.enddate || "").trim().toLowerCase()))
   ).length;
 
   return `
@@ -792,12 +775,13 @@ function _buildProjectHistoryTable(records) {
           <table class="sh-table">
               <thead>
                   <tr>
-                      <th><i class="bi bi-folder2"></i> Project Name</th>
-                      <th class="text-center">Project Code</th>
-                      <th class="text-center"><i class="bi bi-calendar-event"></i> Start Date</th>
-                      <th class="text-center"><i class="bi bi-calendar-check"></i> End Date</th>
-                      <th class="text-center">Days Worked</th>
-                      <th class="text-center">Status</th>
+                      <th style="width: 32%;"><i class="bi bi-folder2"></i> Project Name</th>
+                      <th class="text-center" style="width: 15%;">Project Code</th>
+                      <th class="text-center" style="width: 13%;"><i class="bi bi-calendar-event"></i> Start Date</th>
+                      <th class="text-center" style="width: 13%;"><i class="bi bi-calendar-check"></i> End Date</th>
+                      <th class="text-center" style="width: 10%;">Logged Days</th>
+                      <th class="text-center" style="width: 10%;">Total Hours</th>
+                      <th class="text-center" style="width: 7%;">Status</th>
                   </tr>
               </thead>
               <tbody>${rows}</tbody>

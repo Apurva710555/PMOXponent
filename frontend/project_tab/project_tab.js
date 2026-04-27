@@ -471,7 +471,7 @@ function _buildResourceTable(rows) {
         // { key: 'name',         label: 'Allocation'    },
         { key: 'startdate',    label: 'Start Date'    },
         { key: 'enddate',      label: 'End Date'      },
-        { key: 'daysWorked',   label: 'Days Worked'   },
+        { key: 'daysWorked',   label: 'Logged Days'   },
     ];
 
     // ✅ Center headers for specific columns
@@ -492,7 +492,8 @@ function _buildResourceTable(rows) {
             }
 
             if (c.key === 'daysWorked') {
-                return `<td class="text-center">${_calcDaysWorked(r.startdate, r.enddate)}</td>`;
+                const days = r.daysWorked != null ? r.daysWorked : 0;
+                return `<td class="text-center">${days} days</td>`;
             }
 
             // DEFAULT
@@ -649,14 +650,12 @@ async function _submitManagerModal() {
     }
 }
 
-function _calcDaysWorked(start, end) {
-  if (!start) return '—';
-
-  const s = new Date(start);
-  const e = end ? new Date(end) : new Date(); // 👈 today if no end
-
-  if (isNaN(s) || isNaN(e)) return '—';
-
-  const diff = Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1;
-  return diff > 0 ? `${diff} day${diff > 1 ? 's' : ''}` : '—';
+function _formatDateShort(dateStr) {
+    if (!dateStr || dateStr.toLowerCase() === 'none' || dateStr.toLowerCase() === 'null') return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const m = d.toLocaleString('default', { month: 'short' });
+    const y = String(d.getFullYear()).slice(-2);
+    return `${day}-${m}-${y}`;
 }

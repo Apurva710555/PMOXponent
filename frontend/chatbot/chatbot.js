@@ -70,14 +70,21 @@
             typingIndicator.innerHTML = '';
 
             if (data.status === 'success') {
-                typingIndicator.textContent = data.answer;
+                // Parse basic markdown from Genie into HTML
+                let formattedAnswer = data.answer
+                    .replace(/\n\n/g, '<br><br>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\*(.*?)\*/g, '<i>$1</i>');
+                    
+                typingIndicator.innerHTML = formattedAnswer;
                 
                 // Persist the conversation ID to maintain context on refresh
                 if (data.conversation_id) {
                     localStorage.setItem(CHATBOT_STORAGE_KEY, data.conversation_id);
                 }
             } else {
-                typingIndicator.textContent = 'Oops! ' + (data.message || 'I encountered an issue.');
+                typingIndicator.innerHTML = 'Oops! ' + (data.message || 'I encountered an issue.');
                 typingIndicator.classList.add('error-msg'); // Optional styling
             }
 
@@ -85,7 +92,7 @@
             console.error('Chatbot API Error:', error);
             typingIndicator.classList.remove('pmox-typing');
             typingIndicator.innerHTML = '';
-            typingIndicator.textContent = 'Server unreachable. Please try again later.';
+            typingIndicator.innerHTML = 'Server unreachable. Please try again later.';
         }
 
         messages.scrollTop = messages.scrollHeight;
