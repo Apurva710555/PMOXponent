@@ -777,8 +777,11 @@ def scd2_sync_projects(table_name, incoming_data):
                         inserts.append(row)
                     else:
                         current = active_map[proj_key]
+                        # Databricks column returns might have altered capitalization.
+                        # We must search current dictionary case-insensitively.
+                        current_lower = {k.lower(): v for k, v in current.items()}
                         changed = any(
-                            str(_clean(safe_incoming.get(f)) or '') != str(current.get(f) or '')
+                            str(_clean(safe_incoming.get(f)) or '') != str(current_lower.get(f.lower()) or '')
                             for f in _SCD2_PROJ_TRACKED_FIELDS if f in safe_incoming
                         )
 

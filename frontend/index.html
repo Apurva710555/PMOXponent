@@ -36,8 +36,8 @@
           <i class="bi bi-folder-fill"></i> Projects
         </a>
 
-        <a class="nav-link" data-bs-toggle="tab" href="#details-tab-pane" role="tab" id="detailsTabLink">
-          <i class="bi bi-table"></i> Allocation
+        <a class="nav-link" data-bs-toggle="tab" href="#reports-tab-pane" role="tab" id="reportsTabLink">
+          <i class="bi bi-bar-chart-fill"></i> Reports
         </a>
 
       </nav>
@@ -90,7 +90,7 @@
 
         {% include 'employee_tab/employee_tab.html' %}
         {% include 'project_tab/project_tab.html' %}
-        {% include 'details_tab/details_tab.html' %}
+        {% include 'reports_tab/reports_tab.html' %}
 
       </div>
 
@@ -109,7 +109,6 @@
   <!-- Custom Scripts -->
   <script src="{{ url_for('static', filename='employee_tab/employee_tab.js') }}"></script>
   <script src="{{ url_for('static', filename='project_tab/project_tab.js') }}"></script>
-  <script src="{{ url_for('static', filename='details_tab/details_tab.js') }}"></script>
 
   <!-- Sync Button Script -->
   <script>

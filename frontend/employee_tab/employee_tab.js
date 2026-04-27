@@ -737,6 +737,7 @@ function _buildProjectHistoryTable(records) {
       const startDate = r.startdate ? _formatDateShort(r.startdate) : "—";
       const endDate = r.enddate ? _formatDateShort(r.enddate) : "—";
       const daysWorked = r.days_worked != null ? `${r.days_worked} days` : '<span class="sh-empty">—</span>';
+      const hoursWorked = r.hours_worked != null ? `${r.hours_worked} hrs` : '<span class="sh-empty">—</span>';
 
       const isActive = r.project_status 
         ? r.project_status === "Active" 
@@ -748,11 +749,12 @@ function _buildProjectHistoryTable(records) {
 
       return `
         <tr>
-            <td class="ph-td-name">${projectName}</td>
+            <td class="ph-td-name" style="white-space: normal; word-break: break-word; max-width: 250px;">${projectName}</td>
             <td class="ph-td-code text-center">${projectCode}</td>
             <td class="ph-td-date text-center">${startDate}</td>
             <td class="ph-td-date text-center">${endDate}</td>
             <td class="ph-td-days text-center">${daysWorked}</td>
+            <td class="ph-td-hours text-center">${hoursWorked}</td>
             <td class="ph-td-status text-center">${statusBadge}</td>
         </tr>
       `;
@@ -773,12 +775,13 @@ function _buildProjectHistoryTable(records) {
           <table class="sh-table">
               <thead>
                   <tr>
-                      <th><i class="bi bi-folder2"></i> Project Name</th>
-                      <th class="text-center">Project Code</th>
-                      <th class="text-center"><i class="bi bi-calendar-event"></i> Start Date</th>
-                      <th class="text-center"><i class="bi bi-calendar-check"></i> End Date</th>
-                      <th class="text-center">Days Worked</th>
-                      <th class="text-center">Status</th>
+                      <th style="width: 32%;"><i class="bi bi-folder2"></i> Project Name</th>
+                      <th class="text-center" style="width: 15%;">Project Code</th>
+                      <th class="text-center" style="width: 13%;"><i class="bi bi-calendar-event"></i> Start Date</th>
+                      <th class="text-center" style="width: 13%;"><i class="bi bi-calendar-check"></i> End Date</th>
+                      <th class="text-center" style="width: 10%;">Logged Days</th>
+                      <th class="text-center" style="width: 10%;">Total Hours</th>
+                      <th class="text-center" style="width: 7%;">Status</th>
                   </tr>
               </thead>
               <tbody>${rows}</tbody>

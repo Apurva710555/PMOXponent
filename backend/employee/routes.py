@@ -407,6 +407,7 @@ def get_employee_project_history():
                     employeeId, 
                     projectId, 
                     COUNT(DISTINCT date) as actual_days_worked,
+                    SUM(CAST(totalMinutes AS DOUBLE)) as total_minutes_worked,
                     MIN(date) as first_timesheet_date,
                     MAX(date) as last_timesheet_date
                 FROM `{catalog}`.`{schema}`.`{time_table}`
@@ -434,6 +435,11 @@ def get_employee_project_history():
                 MAX(r.comment) AS comment,
                 
                 CASE 
+                    WHEN MAX(p.enddate) IS NOT NULL 
+                         AND MAX(p.enddate) != '' 
+                         AND MAX(p.enddate) != 'None' 
+                         AND CAST(SUBSTRING(MAX(p.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    THEN 'Inactive'
                     WHEN MAX(r.enddate) IS NOT NULL 
                          AND MAX(r.enddate) != '' 
                          AND MAX(r.enddate) != 'None' 
@@ -442,7 +448,8 @@ def get_employee_project_history():
                     ELSE 'Active'
                 END AS project_status,
                 
-                COALESCE(MAX(t.actual_days_worked), 0) AS days_worked
+                COALESCE(MAX(t.actual_days_worked), 0) AS days_worked,
+                ROUND(COALESCE(MAX(t.total_minutes_worked), 0) / 60.0, 1) AS hours_worked
 
             FROM emp e
 

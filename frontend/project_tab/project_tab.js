@@ -471,7 +471,7 @@ function _buildResourceTable(rows) {
         // { key: 'name',         label: 'Allocation'    },
         { key: 'startdate',    label: 'Start Date'    },
         { key: 'enddate',      label: 'End Date'      },
-        { key: 'daysWorked',   label: 'Days Worked'   },
+        { key: 'daysWorked',   label: 'Logged Days'   },
     ];
 
     // ✅ Center headers for specific columns
