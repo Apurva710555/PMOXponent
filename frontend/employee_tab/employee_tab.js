@@ -987,48 +987,133 @@ function _showEmployee(idx) {
     //   "accountstatus","invitationstatus","customfields","comments"
     // ], emp);
 
-    // FINAL
-    let html = `
-      <div class="emp-grid">
+    // ── Helpers for flat layout ─────────────────────────────────────────────
+    const empNumber = emp.employeeNumber || emp.employee_code || "";
 
-        ${_buildCard("General Information", "bi-person-fill", [
-          "firstName","lastName","displayName","email",
-          "employeeNumber","designation","jobTitle","gender",
-          "isprofilecomplete","isProfileComplete"
-        ], emp)}
+    // Pick first non-empty raw value from multiple candidate keys
+    const _pick = (...keys) =>
+      keys.map(k => emp[k]).find(v => v != null && v !== "" && v !== "None" && v !== "null") ?? "";
 
-        ${_buildCard("Reporting Hierarchy", "bi-diagram-3-fill", [
-          "reportsTo","l2Manager","reportingManager","secondaryReportingManager"
-        ], emp)}
+    // Format ISO date strings → "17 Aug 2003"
+    function _fmtDate(v) {
+      if (!v || v === "None" || v === "null") return "";
+      const s = String(v);
+      if (s.startsWith("0001-") || s.startsWith("1900-")) return "";
+      try {
+        const d = new Date(s);
+        if (!isNaN(d.getTime()) && d.getFullYear() > 1900)
+          return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      } catch {}
+      return s;
+    }
 
-        ${_buildCard("Contact", "bi-telephone-fill", [
-          "workPhone","homePhone","personalEmail","mobilephone","mobilePhone"
-        ], emp)}
+    // Parse JSON and extract a human-readable name/title from a Keka object
+    function _fmtObj(v) {
+      if (!v || v === "None" || v === "null") return "";
+      const s = String(v).trim();
+      if (!s.startsWith("{") && !s.startsWith("[")) return s;
+      try {
+        const obj = JSON.parse(s);
+        if (Array.isArray(obj)) {
+          return obj.map(item => {
+            if (typeof item !== "object") return String(item);
+            const first = item.firstName || item.first_name || "";
+            const last  = item.lastName  || item.last_name  || "";
+            return item.displayName || item.name || `${first} ${last}`.trim() || item.title || item.email || "";
+          }).filter(Boolean).join(", ");
+        }
+        if (typeof obj === "object") {
+          const first = obj.firstName || obj.first_name || "";
+          const last  = obj.lastName  || obj.last_name  || "";
+          return obj.displayName || obj.name || `${first} ${last}`.trim() || obj.title || obj.email || "";
+        }
+      } catch {}
+      return s;
+    }
 
-        ${_buildCard("Organisation", "bi-building", [
-          "department","businessUnit","location","company","legalEntity","costCenter","city","countrycode","countryCode"
-        ], emp)}
+    // Numeric code decoders
+    const _GENDER   = {"0":"","1":"Male","2":"Female","3":"Other"};
+    const _MARITAL  = {"0":"","1":"Single","2":"Married","3":"Divorced","4":"Widowed"};
+    const _BLOOD    = {"0":"","1":"A+","2":"A-","3":"B+","4":"B-","5":"AB+","6":"AB-","7":"O+","8":"O-"};
+    const _decode   = (map, v) => map[String(v)] ?? (v === "None" ? "" : String(v));
 
-        ${_buildCard("Employment & Leave", "bi-briefcase-fill", [
-          "dateOfJoining","joiningdate","startdate",
-          "probationEndDate","confirmationDate",
-          "employmentType","noticePeriod","totalExperienceInDays",
-          "status","employeeStatus","employmentstatus"
-        ], emp)}
+    // Format totalExperienceInDays → "1 yr 4 mos"
+    function _fmtExp(days) {
+      const d = parseInt(days);
+      if (!d || isNaN(d)) return "";
+      const months = Math.floor(d / 30);
+      if (months < 1) return `${d} days`;
+      if (months < 12) return `${months} mos`;
+      const yr = Math.floor(months / 12), mo = months % 12;
+      return mo > 0 ? `${yr} yr ${mo} mos` : `${yr} yrs`;
+    }
 
-      </div>
+    // Render one flat section — empty values are skipped (no blank cells)
+    function _flatSec(heading, icon, pairs) {
+      const cells = pairs
+        .map(([lbl, v]) => {
+          const display = (v == null || v === "" || v === "None" || v === "null") ? null : String(v).trim();
+          if (!display) return "";
+          return `<div class="flat-field">
+            <span class="flat-lbl">${_esc(lbl)}</span>
+            <span class="flat-val">${_esc(display)}</span>
+          </div>`;
+        }).join("");
+      if (!cells.trim()) return "";
+      return `<div class="flat-section">
+        <div class="flat-section-hdr"><i class="bi ${icon}"></i> ${heading}</div>
+        <div class="flat-grid">${cells}</div>
+      </div>`;
+    }
 
-      <div class="emp-bottom">
-        ${_buildCard("Personal", "bi-person-vcard", [
-          "nationality","maritalStatus","dateOfBirth","relations","bloodGroup"
-        ], emp)}
+    const html = `
+      ${_flatSec("Profile", "bi-person-fill", [
+        ["First Name",       _pick("firstName","first_name")],
+        ["Last Name",        _pick("lastName","last_name")],
+        ["Display Name",     _pick("displayName","display_name")],
+        ["Email",            _pick("email")],
+        ["Employee ID",      _pick("employeeNumber","employee_code")],
+        ["Job Title",        _fmtObj(_pick("jobTitle","designation"))],
+        ["Gender",           _decode(_GENDER, _pick("gender"))],
+        ["Personal Email",   _pick("personalEmail")],
+        ["Mobile Phone",     _pick("mobilePhone","mobilephone")],
+        ["Nationality",      _pick("nationality")],
+        ["Marital Status",   _decode(_MARITAL, _pick("maritalStatus"))],
+        ["Date of Birth",    _fmtDate(_pick("dateOfBirth"))],
+        ["Blood Group",      _decode(_BLOOD, _pick("bloodGroup"))],
+      ])}
+
+      ${_flatSec("Work Details", "bi-briefcase-fill", [
+        ["L1 Manager",         _fmtObj(_pick("reportsTo","reportingManager"))],
+        ["L2 Manager",         _fmtObj(_pick("l2Manager","secondaryReportingManager"))],
+        ["Department",         _pick("department")],
+        ["Business Unit",      _pick("businessUnit")],
+        ["City",               _pick("city","location")],
+        ["Country",            _pick("countryCode","countrycode")],
+        ["Start Date",         _fmtDate(_pick("dateOfJoining","joiningdate","startdate"))],
+        ["Probation End Date", _fmtDate(_pick("probationEndDate"))],
+        ["Employment Type",    _pick("employmentType")],
+        ["Notice Period",      _pick("noticePeriod")],
+        ["Total Experience",   _fmtExp(_pick("totalExperienceInDays"))],
+        ["Status",             _pick("status","employeeStatus","employmentstatus")],
+        ["Company",            _pick("company","legalEntity")],
+        ["Cost Center",        _pick("costCenter")],
+      ])}
+
+      <!-- Skills injected async -->
+      <div id="empProfileSkillsBlock">
+        <div class="skill-inline-loading">
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          Loading skills...
+        </div>
       </div>
     `;
 
     panel.innerHTML = html;
-
-    panel.innerHTML = html;
+    _injectProfileSkills(empNumber);
   }
+
+
 /* ═══ Helpers ══════════════════════════════════════════ */
 
 function _empName(emp) {
@@ -1301,4 +1386,211 @@ function _esc(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+/* ═══ Skill Matrix ══════════════════════════════════════ */
+
+/* Called from _showEmployee — injects skills inline into the Profile panel */
+async function _injectProfileSkills(empNumber) {
+  const block = document.getElementById("empProfileSkillsBlock");
+  if (!block || !empNumber) return;
+
+  try {
+    const res    = await fetch(`/api/employee/skills?employeeId=${encodeURIComponent(empNumber)}`);
+    const result = await res.json();
+
+    if (result.status === "success" && result.data && result.data.length > 0) {
+      block.innerHTML = _buildProfileSkillCard(result.data);
+    } else if (result.status === "success") {
+      // No skills recorded — hide cleanly
+      block.style.display = "none";
+    } else {
+      // API returned an error — show it so it's debuggable
+      block.innerHTML = `
+        <div class="detail-card">
+          <div class="detail-card-header"><i class="bi bi-stars"></i> Skills &amp; Expertise</div>
+          <div style="padding:16px;color:#dc3545;font-size:0.82rem;">
+            <i class="bi bi-exclamation-triangle"></i>
+            Could not load skills: ${_esc(result.message || "Unknown error")}
+          </div>
+        </div>`;
+    }
+  } catch (err) {
+    block.innerHTML = `
+      <div class="detail-card">
+        <div class="detail-card-header"><i class="bi bi-stars"></i> Skills &amp; Expertise</div>
+        <div style="padding:16px;color:#dc3545;font-size:0.82rem;">
+          <i class="bi bi-wifi-off"></i> Skills fetch error: ${_esc(err.message)}
+        </div>
+      </div>`;
+  }
+}
+
+/* Renders skills as a single detail-card consistent with the profile cards above */
+function _buildProfileSkillCard(records) {
+  // Group by category
+  const groups = {};
+  for (const skill of records) {
+    const cat = skill.category || skill.skillCategory || "General";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(skill);
+  }
+
+  const categoryHTML = Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cat, skills]) => {
+      const chips = skills.map((s) => {
+        const name      = _esc(s.skillName || s.name || "—");
+        const profRaw   = s.proficiencyLevel || s.proficiency || "";
+        const profLabel = _skillProficiencyLabel(profRaw);
+        const profClass = _skillProficiencyClass(profRaw);
+        const expRaw    = s.experienceInYears || s.experience || s.experienceYears || "";
+        const expLabel  = expRaw ? ` · ${parseFloat(expRaw).toFixed(1)} yrs` : "";
+
+        return `
+          <div class="skill-inline-chip">
+            <span class="skill-inline-name">${name}</span>
+            ${profLabel ? `<span class="skill-badge ${profClass}">${_esc(profLabel)}</span>` : ""}
+            ${expLabel  ? `<span class="skill-inline-exp">${_esc(expLabel)}</span>` : ""}
+          </div>`;
+      }).join("");
+
+      return `
+        <div class="skill-inline-category">
+          <div class="skill-inline-cat-label">
+            <i class="bi bi-tag-fill"></i> ${_esc(cat)}
+          </div>
+          <div class="skill-inline-chips">${chips}</div>
+        </div>`;
+    })
+    .join("");
+
+  return `
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <i class="bi bi-stars"></i> Skills &amp; Expertise
+        <span class="skill-count-chip" style="margin-left:auto">${records.length} skill${records.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="skill-inline-body">${categoryHTML}</div>
+    </div>`;
+}
+
+async function _fetchSkillsData() {
+  const emp = _empData[_currentEmpIdx];
+  if (!emp) return;
+
+  const empNumber = emp.employeeNumber || emp.employee_code || "";
+  const container = document.getElementById("empSkillsContent");
+  if (!container) return;
+
+  container.innerHTML = `
+      <div class="loading-spinner">
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          Fetching skill matrix...
+      </div>`;
+
+  try {
+    const res    = await fetch(`/api/employee/skills?employeeId=${encodeURIComponent(empNumber)}`);
+    const result = await res.json();
+
+    if (result.status === "success" && result.data && result.data.length > 0) {
+      container.innerHTML = _buildSkillsGrid(result.data);
+    } else if (result.status === "success") {
+      container.innerHTML = `
+          <div class="empty-state">
+              <i class="bi bi-stars"></i>
+              <p>No skills recorded for this employee yet.</p>
+          </div>`;
+    } else {
+      container.innerHTML = `
+          <div class="empty-state">
+              <i class="bi bi-exclamation-triangle"></i>
+              <p>${_esc(result.message || "Error fetching skill matrix.")}</p>
+          </div>`;
+    }
+  } catch (err) {
+    container.innerHTML = `
+        <div class="empty-state">
+            <i class="bi bi-wifi-off"></i>
+            <p>Network error: ${_esc(err.message)}</p>
+        </div>`;
+  }
+}
+
+function _buildSkillsGrid(records) {
+  // Group by category (fall back to "General" when missing)
+  const groups = {};
+  for (const skill of records) {
+    const cat = skill.category || skill.skillCategory || "General";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(skill);
+  }
+
+  const categoryHTML = Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cat, skills]) => {
+      const cards = skills.map((s) => {
+        const name        = _esc(s.skillName || s.name || "—");
+        const profRaw     = s.proficiencyLevel || s.proficiency || "";
+        const profLabel   = _skillProficiencyLabel(profRaw);
+        const profClass   = _skillProficiencyClass(profRaw);
+        const expRaw      = s.experienceInYears || s.experience || s.experienceYears || "";
+        const expLabel    = expRaw ? `${parseFloat(expRaw).toFixed(1)} yrs` : "";
+
+        return `
+          <div class="skill-card">
+            <div class="skill-card-name">${name}</div>
+            ${profLabel
+              ? `<span class="skill-badge ${profClass}">${_esc(profLabel)}</span>`
+              : ""}
+            ${expLabel
+              ? `<div class="skill-exp"><i class="bi bi-clock"></i> ${_esc(expLabel)}</div>`
+              : ""}
+          </div>`;
+      }).join("");
+
+      return `
+        <div class="skill-category-block">
+          <div class="skill-category-header">
+            <i class="bi bi-tag-fill"></i> ${_esc(cat)}
+            <span class="skill-count-chip">${skills.length}</span>
+          </div>
+          <div class="skill-cards-grid">${cards}</div>
+        </div>`;
+    })
+    .join("");
+
+  return `
+    <div class="skills-meta">
+        <i class="bi bi-stars"></i>
+        <strong>${records.length}</strong> skill${records.length !== 1 ? "s" : ""} &nbsp;·&nbsp;
+        <strong>${Object.keys(groups).length}</strong> categor${Object.keys(groups).length !== 1 ? "ies" : "y"}
+    </div>
+    <div class="skills-categories-wrap">${categoryHTML}</div>`;
+}
+
+/* Proficiency: Keka uses 0–4 integer or string labels */
+function _skillProficiencyLabel(raw) {
+  const num = parseInt(raw, 10);
+  const map = {
+    0: "Beginner",
+    1: "Elementary",
+    2: "Intermediate",
+    3: "Advanced",
+    4: "Expert",
+  };
+  if (!isNaN(num) && map[num]) return map[num];
+  // String labels passed through as-is
+  return raw ? String(raw) : "";
+}
+
+function _skillProficiencyClass(raw) {
+  const num = parseInt(raw, 10);
+  const label = _skillProficiencyLabel(raw).toLowerCase();
+  if (label === "beginner"    || num === 0) return "skill-badge-beginner";
+  if (label === "elementary"  || num === 1) return "skill-badge-elementary";
+  if (label === "intermediate"|| num === 2) return "skill-badge-intermediate";
+  if (label === "advanced"    || num === 3) return "skill-badge-advanced";
+  if (label === "expert"      || num === 4) return "skill-badge-expert";
+  return "skill-badge-default";
 }

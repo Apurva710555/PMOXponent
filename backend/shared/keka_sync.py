@@ -203,6 +203,10 @@ def sync_keka_data_to_dbx():
     headers = _keka_headers(token)
     sync_errors = []
 
+    # Hoist imports used across multiple sections to avoid Python's UnboundLocalError
+    # (importing a name anywhere in a function makes Python treat it as local everywhere)
+    from backend.shared.dbx_utils import sync_to_dbx_table, invalidate_dbx_cache
+
     # ── 1. Employees ───────────────────────────────────────────────────────────
     try:
         emp_url = f"{base_url}/api/v1/hris/employees"
@@ -321,15 +325,235 @@ def sync_keka_data_to_dbx():
         traceback.print_exc()
         sync_errors.append("time_entries")
 
+    # ── 5. Skill Matrix ─────────────────────────────────────────────────────────
+    try:
+        import json as _json
+        import time as _time
+        import requests as _req
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        skills_table = os.getenv("KEKA_EMPLOYEE_SKILLS_TABLE", "keka_employee_skills")
+        print("[INFO] Starting skill matrix sync…")
+
+        # Reuse emp_data already fetched in Section 1 — no need to re-fetch 911 employees.
+        # Guard in case Section 1 failed and emp_data was never assigned.
+        employees_for_skills = emp_data if "emp_data" in dir() and emp_data else []
+
+        if not employees_for_skills:
+            print("[WARN] No employee data available for skill matrix sync. Skipping.")
+        else:
+            all_skill_rows = []
+            _SKILLS_DELAY   = 0.2   # seconds between calls per thread (5 threads → ~25 req/min total)
+            _MAX_WORKERS    = 5     # parallel threads
+
+            def _fetch_employee_skills(emp):
+                """Fetch skills for one employee. Returns list of flat dicts."""
+                emp_uuid   = str(emp.get("id", "")).strip()
+                emp_number = str(emp.get("employeeNumber", "")).strip()
+                if not emp_uuid:
+                    return []
+
+                skill_url = f"{base_url}/api/v1/hris/employees/{emp_uuid}/skills"
+                _time.sleep(_SKILLS_DELAY)  # lightweight delay — no shared lock needed
+
+                try:
+                    resp = _req.get(skill_url, headers=headers, timeout=30)
+
+                    if resp.status_code == 200:
+                        body = resp.json()
+                        if isinstance(body, dict):
+                            skills = body.get("data", [])
+                            if isinstance(skills, dict):
+                                skills = skills.get("results", [])
+                        elif isinstance(body, list):
+                            skills = body
+                        else:
+                            skills = []
+
+                        rows = []
+                        for skill in skills:
+                            flat = {}
+                            for k, v in skill.items():
+                                flat[k] = _json.dumps(v) if isinstance(v, (dict, list)) else (str(v) if v is not None else None)
+                            flat["employeeId"]     = emp_uuid
+                            flat["employeeNumber"] = emp_number
+                            rows.append(flat)
+                        return rows
+
+                    elif resp.status_code == 404:
+                        return []   # employee has no skills — normal
+                    else:
+                        print(f"[WARN] Skills API {resp.status_code} for employee {emp_number}. Skipping.")
+                        return []
+
+                except Exception as exc:
+                    print(f"[WARN] Skills fetch failed for employee {emp_number}: {exc}")
+                    return []
+
+            total_emps = len(employees_for_skills)
+            done       = 0
+
+            with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
+                futures = {pool.submit(_fetch_employee_skills, emp): emp for emp in employees_for_skills}
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result:
+                        all_skill_rows.extend(result)
+                    done += 1
+                    if done % 50 == 0 or done == total_emps:
+                        print(f"[INFO] Skills: {done}/{total_emps} employees processed, "
+                              f"{len(all_skill_rows)} skill records collected so far.")
+
+            print(f"[INFO] Fetched {len(all_skill_rows)} total skill records across {total_emps} employees.")
+
+            if all_skill_rows:
+                sync_to_dbx_table(skills_table, all_skill_rows)
+            else:
+                print("[WARN] No skill data returned from Keka. Skipping skills sync.")
+
+    except Exception as e:
+        print(f"[ERROR] Skill matrix sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("skill_matrix")
+
+    # ── 6. Holidays ────────────────────────────────────────────────────────────
+    try:
+        import datetime as _dt
+        import json as _json
+
+        holidays_table = os.getenv("KEKA_HOLIDAYS_TABLE", "keka_holidays")
+        # Correct endpoint: returns all holiday calendars with their holidays embedded
+        calendars_url = f"{base_url}/api/v1/time/holidayscalendar"
+
+        print("[INFO] Starting holidays sync…")
+        _rate_limiter.wait()
+        cal_resp = requests.get(calendars_url, headers=headers, timeout=30)
+        cal_resp.raise_for_status()
+
+        cal_body = cal_resp.json()
+        # Unwrap: { "succeeded": true, "data": [...] }  or plain list
+        if isinstance(cal_body, dict):
+            calendars = cal_body.get("data", [])
+            if isinstance(calendars, dict):
+                calendars = calendars.get("results", [])
+        elif isinstance(cal_body, list):
+            calendars = cal_body
+        else:
+            calendars = []
+
+        all_holiday_rows = []
+
+        for cal in calendars:
+            cal_id   = str(cal.get("id", ""))
+            cal_name = str(cal.get("name", ""))
+
+            # Holidays are either nested in the calendar object or need a sub-call
+            raw_holidays = cal.get("holidays") or cal.get("holidayList") or []
+
+            if not raw_holidays and cal_id:
+                # Try the sub-resource pattern if holidays weren't embedded
+                _rate_limiter.wait()
+                sub_url  = f"{base_url}/api/v1/time/holidayscalendar/{cal_id}/holidays"
+                sub_resp = requests.get(sub_url, headers=headers, timeout=30)
+                if sub_resp.status_code == 200:
+                    sub_body     = sub_resp.json()
+                    raw_holidays = (
+                        sub_body.get("data", []) if isinstance(sub_body, dict) else
+                        (sub_body if isinstance(sub_body, list) else [])
+                    )
+
+            for h in raw_holidays:
+                if isinstance(h, dict):
+                    flat = {}
+                    for k, v in h.items():
+                        flat[k] = _json.dumps(v) if isinstance(v, (dict, list)) else (str(v) if v is not None else None)
+                    flat["calendarId"]   = cal_id
+                    flat["calendarName"] = cal_name
+                    all_holiday_rows.append(flat)
+
+            print(f"[INFO] Calendar '{cal_name}': {len(raw_holidays)} holidays.")
+
+        print(f"[INFO] Fetched {len(all_holiday_rows)} total holiday records across {len(calendars)} calendars.")
+
+        if all_holiday_rows:
+            sync_to_dbx_table(holidays_table, all_holiday_rows)
+        else:
+            print("[WARN] No holiday data returned from Keka. Skipping holidays sync.")
+
+    except Exception as e:
+        print(f"[ERROR] Holidays sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("holidays")
+
+    # ── 7. Leave Requests ──────────────────────────────────────────────────────
+    try:
+        import datetime as _dt
+
+        leaves_table = os.getenv("KEKA_LEAVES_TABLE", "keka_leave_requests")
+        leaves_url   = f"{base_url}/api/v1/time/leaverequests"
+
+        print("[INFO] Starting leave requests sync…")
+
+        # Keka enforces a hard limit of 90 days per request — chunk accordingly.
+        # Fetch: 12 months prior → 6 months ahead (covers all realistic leave data).
+        CHUNK_DAYS = 89
+        today      = _dt.date.today()
+        window_start = today.replace(year=today.year - 1, month=1, day=1)
+        window_end   = today + _dt.timedelta(days=180)   # 6 months ahead
+
+        all_leave_rows = []
+        seen_ids       = set()   # de-duplicate across chunks
+        chunk_start    = window_start
+
+        while chunk_start <= window_end:
+            chunk_end = min(chunk_start + _dt.timedelta(days=CHUNK_DAYS), window_end)
+            from_str  = chunk_start.strftime("%Y-%m-%d")
+            to_str    = chunk_end.strftime("%Y-%m-%d")
+
+            print(f"[INFO] Fetching leave requests: {from_str} → {to_str}")
+
+            chunk_data = _fetch_all_pages(
+                leaves_url,
+                headers,
+                extra_params={"from": from_str, "to": to_str}
+            )
+
+            new_in_chunk = 0
+            for row in chunk_data:
+                # De-duplicate using id/leaveRequestId (Keka field name varies)
+                row_id = row.get("id") or row.get("leaveRequestId") or id(row)
+                if row_id not in seen_ids:
+                    seen_ids.add(row_id)
+                    all_leave_rows.append(row)
+                    new_in_chunk += 1
+
+            print(f"[INFO] Chunk {from_str}→{to_str}: {len(chunk_data)} records, {new_in_chunk} new.")
+            chunk_start = chunk_end + _dt.timedelta(days=1)
+
+        print(f"[INFO] Fetched {len(all_leave_rows)} unique leave records across all chunks.")
+
+        if all_leave_rows:
+            sync_to_dbx_table(leaves_table, all_leave_rows)
+        else:
+            print("[WARN] No leave request data returned from Keka. Skipping leaves sync.")
+
+    except Exception as e:
+        print(f"[ERROR] Leave requests sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("leave_requests")
+
     # ── Summary ────────────────────────────────────────────────────────────────
+
+    # Always invalidate cache — even on partial errors, successfully synced
+    # modules must be visible immediately (e.g. skills synced but proj_resources failed).
+    try:
+        invalidate_dbx_cache()
+    except Exception:
+        pass
+
     if sync_errors:
         print(f"[WARN] Keka sync completed with errors in: {', '.join(sync_errors)}")
         return False
     else:
         print("[INFO] Keka sync completed successfully for all modules.")
-        
-        # Invalidate Databricks API cache so UI picks up the latest synced data instantly
-        from backend.shared.dbx_utils import invalidate_dbx_cache
-        invalidate_dbx_cache()
-        
-        return True
+        return True

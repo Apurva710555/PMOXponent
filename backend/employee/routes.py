@@ -480,3 +480,47 @@ def get_employee_project_history():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ── Route 6: Skill Matrix for an employee ─────────────────────────────────────
+
+@employee_bp.route('/api/employee/skills', methods=['GET'])
+def get_employee_skills():
+    """
+    Returns skill matrix records for a given employee from the synced
+    keka_employee_skills Databricks table.
+
+    Query params:
+        employeeId — the employeeNumber (human-readable ID, e.g. 100052)
+    """
+    employee_number = request.args.get('employeeId', '').strip()
+    if not employee_number:
+        return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
+
+    skills_table   = os.getenv("KEKA_EMPLOYEE_SKILLS_TABLE", "keka_employee_skills").strip()
+    catalog        = os.getenv("CATALOG_NAME", "").strip()
+    schema         = os.getenv("SCHEMA_NAME", "").strip()
+
+    if not all([skills_table, catalog, schema]):
+        return jsonify({
+            "status": "error",
+            "message": "Server configuration missing: KEKA_EMPLOYEE_SKILLS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
+        }), 500
+
+    safe_emp_number = employee_number.replace("'", "''")
+
+    try:
+        sql = f"""
+            SELECT *
+            FROM `{catalog}`.`{schema}`.`{skills_table}`
+            WHERE employeeNumber = '{safe_emp_number}'
+        """
+        rows = execute_query(sql) or []
+        return jsonify({"status": "success", "data": rows})
+
+    except Exception as e:
+        # Table might not exist yet (before first sync) — return empty gracefully
+        error_str = str(e)
+        if "TABLE_OR_VIEW_NOT_FOUND" in error_str or "does not exist" in error_str.lower():
+            return jsonify({"status": "success", "data": []})
+        return jsonify({"status": "error", "message": str(e)}), 500

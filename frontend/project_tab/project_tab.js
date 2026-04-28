@@ -193,20 +193,60 @@ function _showProject(idx) {
     //     ${_buildProjCard('Project Managers', 'bi-person-workspace', managersFields, proj)}
     //     ${otherFields.length ? _buildProjCard('Other Details', 'bi-three-dots', otherFields, proj) : ''}
     // `;
-    panel.innerHTML = `
-    ${_buildProjCard('Project Overview', 'bi-folder-fill', overviewFields, proj)}
+    panel.innerHTML = (() => {
+      // Pick helper — first non-empty value
+      const _pv = (val) => {
+        const v = _formatProjValue('', val === undefined ? '' : val);
+        return (v && v !== '<span style="color:var(--clr-text-muted)">Not set</span>') ? v : '';
+      };
 
-    <div class="proj-row-3">
-        ${_buildProjCard('Timeline', 'bi-calendar-range', timelineFields, proj)}
-        ${_buildProjCard('Status', 'bi-toggle-on', statusFields, proj)}
-        ${_buildProjCard('Project Managers', 'bi-person-workspace', managersFields, proj)}
-    </div>
+      // Flat section builder (mirrors employee tab style)
+      function _flatProjSec(heading, icon, pairs) {
+        const cells = pairs.map(([lbl, rawKey]) => {
+          const raw = proj[rawKey];
+          const formatted = _formatProjValue(rawKey, raw);
+          if (!formatted || formatted.includes('Not set')) return '';
+          return `
+            <div class="flat-field">
+              <span class="flat-lbl">${lbl}</span>
+              <span class="flat-val">${formatted}</span>
+            </div>`;
+        }).join('');
+        if (!cells.trim()) return '';
+        return `
+          <div class="flat-section">
+            <div class="flat-section-hdr"><i class="bi ${icon}"></i> ${heading}</div>
+            <div class="flat-grid">${cells}</div>
+          </div>`;
+      }
 
-    ${_buildProjCard('Budget', 'bi-cash-stack', budgetFields, proj)}
+      // Detect actual start/end date keys from Databricks (key names vary)
+      const projKeys = Object.keys(proj);
+      const startKey = projKeys.find(k => k.toLowerCase().replace(/_/g,'').replace(/ /g,'') === 'projectstartdate') || '';
+      const endKey   = projKeys.find(k => k.toLowerCase().replace(/_/g,'').replace(/ /g,'') === 'projectenddate') || '';
 
-    ${otherFields.length ? _buildProjCard('Other Details', 'bi-three-dots', otherFields, proj) : ''}
-    `;
+      return `
+        ${_flatProjSec('Project Details', 'bi-folder-fill', [
+          ['Project Name',     'name'],
+          ['Project Code',     'code'],
+          ['Client',           'clientId'],
+          ['Billing Type',     'billingType'],
+          ['Billable',         'isBillable'],
+          ['Archived',         'isArchived'],
+          ['Project Managers', 'projectManagers'],
+          ['Account Manager',  'accountmanager'],
+        ])}
+
+        ${_flatProjSec('Timeline & Budget', 'bi-calendar-range', [
+          ['Start Date',    startKey],
+          ['End Date',      endKey],
+          ['Budgeted Time', 'budgetedTime'],
+          ['Budget',        'projectBudget'],
+        ])}
+      `;
+    })();
     }
+
  
  
 /* ═══ Helpers ══════════════════════════════════════════ */

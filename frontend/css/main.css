@@ -1751,3 +1751,290 @@ html, body {
   flex: 1;
   overflow-y: auto;   /* ✅ ONLY THIS SCROLLS */
 }
+
+/* ═══════════════════════════════════════════════════════
+   Skill Matrix — Panel Styles
+   ═══════════════════════════════════════════════════════ */
+
+/* Meta bar (e.g. "12 skills · 3 categories") */
+.skills-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  margin-bottom: var(--sp-md);
+}
+
+/* Outer wrapper for all category blocks */
+.skills-categories-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+}
+
+/* Individual category section */
+.skill-category-block {
+  background: var(--clr-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* Category header row */
+.skill-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px var(--sp-lg);
+  background: var(--clr-bg);
+  border-bottom: 1px solid var(--clr-border);
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  letter-spacing: 0.1px;
+}
+
+/* Count chip in category header */
+.skill-count-chip {
+  margin-left: auto;
+  background: rgba(36, 91, 174, 0.1);
+  color: var(--clr-primary);
+  border-radius: 20px;
+  padding: 1px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Grid of skill cards inside a category */
+.skill-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-sm);
+  padding: var(--sp-md) var(--sp-lg);
+}
+
+/* Individual skill card */
+.skill-card {
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.skill-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Skill name */
+.skill-card-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  line-height: 1.3;
+}
+
+/* Experience sub-line */
+.skill-exp {
+  font-size: 0.74rem;
+  color: var(--clr-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Proficiency badges */
+.skill-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  width: fit-content;
+}
+
+.skill-badge-beginner {
+  background: rgba(253, 184, 57, 0.15);
+  color: #b8860b;
+}
+
+.skill-badge-elementary {
+  background: rgba(240, 173, 78, 0.15);
+  color: #c87a00;
+}
+
+.skill-badge-intermediate {
+  background: rgba(23, 162, 184, 0.15);
+  color: #0e6f80;
+}
+
+.skill-badge-advanced {
+  background: rgba(36, 91, 174, 0.15);
+  color: var(--clr-primary);
+}
+
+.skill-badge-expert {
+  background: rgba(111, 66, 193, 0.14);
+  color: #6f42c1;
+}
+
+.skill-badge-default {
+  background: rgba(108, 117, 125, 0.12);
+  color: var(--clr-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Skill Matrix — Inline Profile Card
+   ═══════════════════════════════════════════════════════ */
+
+/* Small loading spinner inside the profile panel */
+.skill-inline-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px var(--sp-lg);
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+}
+
+/* Body of the inline skills card */
+.skill-inline-body {
+  padding: var(--sp-md) var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+/* One row per category */
+.skill-inline-category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Category label row */
+.skill-inline-cat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Wrapping row of skill chips */
+.skill-inline-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Individual skill chip */
+.skill-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  transition: box-shadow 0.15s ease;
+}
+
+.skill-inline-chip:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* Skill name inside chip */
+.skill-inline-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+/* Experience text inside chip */
+.skill-inline-exp {
+  font-size: 0.74rem;
+  color: var(--clr-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Flat Profile / Project Layout
+   ═══════════════════════════════════════════════════════ */
+
+.flat-section {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.flat-section-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  background: var(--clr-bg);
+  border-bottom: 1px solid var(--clr-border);
+  letter-spacing: 0.3px;
+}
+
+.flat-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 16px 8px;
+  row-gap: 20px;
+  column-gap: 16px;
+}
+
+.flat-field {
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+  min-width: 0;
+  gap: 4px;
+}
+
+.flat-lbl {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flat-val {
+  font-size: 0.85rem;
+  color: var(--clr-text);
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* Responsive: 4 cols below 1100px */
+@media (max-width: 1100px) {
+  .flat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Responsive: 3 cols below 768px */
+@media (max-width: 768px) {
+  .flat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
