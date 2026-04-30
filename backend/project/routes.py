@@ -14,10 +14,21 @@ def get_project_data():
         catalog = os.getenv("CATALOG_NAME")
         schema  = os.getenv("SCHEMA_NAME")
         table_name = os.getenv("KEKA_PROJECTS_TABLE")
+        client_table = os.getenv("KEKA_CLIENTS_TABLE", "keka_clients")
         if not table_name:
             return jsonify({"status": "success", "data": []}), 200
         
-        sql = f"SELECT * FROM `{catalog}`.`{schema}`.`{table_name}` WHERE enddate IS NULL OR enddate = '' OR enddate = 'None'"
+        sql = f"""
+            SELECT p.*, 
+                   c.name AS clientName, 
+                   c.code AS clientCode,
+                   c.description AS clientDescription,
+                   c.billingAddress AS clientAddress
+            FROM `{catalog}`.`{schema}`.`{table_name}` p
+            LEFT JOIN `{catalog}`.`{schema}`.`{client_table}` c
+              ON LOWER(p.clientId) = LOWER(c.id)
+            WHERE p.enddate IS NULL OR p.enddate = '' OR p.enddate = 'None'
+        """
         data = execute_query(sql)
         return jsonify({"status": "success", "data": data})
     except Exception as e:

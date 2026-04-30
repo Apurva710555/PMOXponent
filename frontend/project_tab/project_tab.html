@@ -7,19 +7,24 @@
   <!-- Filter Bar -->
   <div class="filter-bar-row" id="projFilterBar">
     <div class="filter-group">
+      <label>Client Name</label>
+      <input type="text" id="projFilterClientName" class="filter-input" list="projClientNameList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="projClientNameList"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Client Code</label>
+      <input type="text" id="projFilterClientCode" class="filter-input" list="projClientCodeList" placeholder="Type to search..." autocomplete="off">
+      <datalist id="projClientCodeList"></datalist>
+    </div>
+    <div class="filter-group">
       <label>Project Name</label>
       <input type="text" id="projFilterName" class="filter-input" list="projNameList" placeholder="Type to search..." autocomplete="off">
       <datalist id="projNameList"></datalist>
     </div>
     <div class="filter-group">
       <label>Project Code</label>
-      <input type="text" id="projFilterCode" class="filter-input" list="projCodeList"
-        placeholder="Type to search..." autocomplete="off">
+      <input type="text" id="projFilterCode" class="filter-input" list="projCodeList" placeholder="Type to search..." autocomplete="off">
       <datalist id="projCodeList"></datalist>
-    </div>
-    <div class="filter-group">
-      <label>Status</label>
-      <input type="text" id="projStatus" class="filter-input" readonly>
     </div>
   </div>
 

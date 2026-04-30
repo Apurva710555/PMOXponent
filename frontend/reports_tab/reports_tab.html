@@ -3,11 +3,170 @@
      ═══════════════════════════════════════════════════════════ -->
 
 <div class="tab-pane fade" id="reports-tab-pane" role="tabpanel">
-  <div class="card p-4 h-100 shadow-sm" style="border-radius: 12px; border: none;">
-    <!-- Databricks Dashboard iframe -->
-    <iframe
-      src="https://adb-3859797657626704.4.azuredatabricks.net/embed/dashboardsv3/01f13d5e58ca14aa9c2816e670065d21?o=3859797657626704"
-      width="100%" height="600" frameborder="0">
-    </iframe>
+  <div class="card p-0 h-100 shadow-sm" style="border-radius: 12px; border: none; overflow: hidden;">
+    <div class="row g-0 h-100">
+      
+      <!-- Sidebar for Subtabs -->
+      <div class="col-md-3 col-lg-2 border-end" id="reportSidebar" style="background: #fafbfc; overflow-y: auto; transition: all 0.2s ease;">
+        <div class="p-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-muted text-uppercase m-0 ps-2" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px;">Dashboards</h6>
+            <button class="btn btn-sm text-muted p-0 border-0" onclick="toggleReportSidebar()" title="Collapse Sidebar" style="background: transparent;">
+              <i class="bi bi-layout-sidebar-inset" style="font-size: 1.1rem;"></i>
+            </button>
+          </div>
+          <nav class="nav flex-column nav-pills" id="reportSubTabs" role="tablist">
+            <a class="nav-link active mb-1" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Overview
+            </a>
+            <a class="nav-link mb-1" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Timesheet Compliance
+            </a>
+            <a class="nav-link mb-1" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Talent Pool Overview
+            </a>
+            <a class="nav-link mb-1" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Blocked Resource
+            </a>
+            <a class="nav-link mb-1" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Future Pool
+            </a>
+            <a class="nav-link mb-1" id="report-resource-master-link" data-bs-toggle="tab" href="#report-resource-master" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Resource Master
+            </a>
+            <a class="nav-link mb-1" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Resigned Resources
+            </a>
+            <a class="nav-link mb-1" id="report-contract-link" data-bs-toggle="tab" href="#report-contract" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Direct Contract & 3rd P...
+            </a>
+            <a class="nav-link mb-1" id="report-demand-link" data-bs-toggle="tab" href="#report-demand" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Demand Tracker
+            </a>
+            <a class="nav-link mb-1" id="report-utilization-link" data-bs-toggle="tab" href="#report-utilization" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Resource Utilization
+            </a>
+            <a class="nav-link mb-1" id="report-certification-link" data-bs-toggle="tab" href="#report-certification" role="tab" style="font-size: 0.85rem; font-weight: 500; border-radius: 6px; padding: 10px 16px;">
+              Employee Certification
+            </a>
+          </nav>
+        </div>
+      </div>
+      
+      <!-- Content for subtabs -->
+      <div class="col-md-9 col-lg-10 p-4" id="reportMainContent" style="background: #ffffff; overflow-y: auto; transition: all 0.2s ease; display: flex; flex-direction: column;">
+        
+        <!-- Button to show sidebar when hidden -->
+        <div class="mb-3 d-none" id="showReportSidebarBtn">
+          <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2" onclick="toggleReportSidebar()" title="Show Dashboards Menu">
+            <i class="bi bi-layout-sidebar"></i> Dashboards
+          </button>
+        </div>
+
+        <div class="tab-content flex-grow-1" id="reportSubTabsContent">
+          <!-- Overview Tab (Placeholder) -->
+          <div class="tab-pane fade show active h-100" id="report-overview" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Overview Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+
+          <!-- Timesheet Compliance Tab (Current Dashboard) -->
+          <div class="tab-pane fade h-100" id="report-timesheet-compliance" role="tabpanel">
+            <iframe
+              src="https://adb-3859797657626704.4.azuredatabricks.net/embed/dashboardsv3/01f13d5e58ca14aa9c2816e670065d21?o=3859797657626704"
+              width="100%" height="600" frameborder="0" style="border-radius: 8px;">
+            </iframe>
+          </div>
+          
+          <!-- Placeholders for other tabs -->
+          <div class="tab-pane fade h-100" id="report-talent-pool" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Talent Pool Overview Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+          <div class="tab-pane fade h-100" id="report-blocked-resource" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Blocked Resource Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+          <div class="tab-pane fade h-100" id="report-future-pool" role="tabpanel">
+            <iframe
+              src="https://adb-3859797657626704.4.azuredatabricks.net/embed/dashboardsv3/01f143b0ac711b458886e33e0dd0e408?o=3859797657626704"
+              width="100%" height="600" frameborder="0" style="border-radius: 8px;">
+            </iframe>
+          </div>
+          <div class="tab-pane fade h-100" id="report-resource-master" role="tabpanel">
+            <iframe
+              src="https://adb-3859797657626704.4.azuredatabricks.net/embed/dashboardsv3/01f143ab9a6a174ba646545c3e8f2eca?o=3859797657626704"
+              width="100%" height="600" frameborder="0" style="border-radius: 8px;">
+            </iframe>
+          </div>
+          <div class="tab-pane fade h-100" id="report-resigned" role="tabpanel">
+            <iframe
+              src="https://adb-3859797657626704.4.azuredatabricks.net/embed/dashboardsv3/01f143b709cf183d936553360f4b419b?o=3859797657626704"
+              width="100%" height="600" frameborder="0" style="border-radius: 8px;">
+            </iframe>
+          </div>
+          <div class="tab-pane fade h-100" id="report-contract" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Direct Contract & 3rd Party Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+          <div class="tab-pane fade h-100" id="report-demand" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Demand Tracker Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+          <div class="tab-pane fade h-100" id="report-utilization" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Resource Utilization Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+          <div class="tab-pane fade h-100" id="report-certification" role="tabpanel">
+             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="min-height: 400px;">
+               <i class="bi bi-clock-history mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+               <h5>Employee Certification Dashboard</h5>
+               <p>This dashboard is pending integration.</p>
+             </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
+
+<script>
+  function toggleReportSidebar() {
+    const sidebar = document.getElementById('reportSidebar');
+    const mainContent = document.getElementById('reportMainContent');
+    const showBtn = document.getElementById('showReportSidebarBtn');
+    
+    if (sidebar.style.display === 'none') {
+      // Show sidebar
+      sidebar.style.display = 'block';
+      mainContent.classList.remove('col-12');
+      mainContent.classList.add('col-md-9', 'col-lg-10');
+      showBtn.classList.add('d-none');
+    } else {
+      // Hide sidebar
+      sidebar.style.display = 'none';
+      mainContent.classList.remove('col-md-9', 'col-lg-10');
+      mainContent.classList.add('col-12');
+      showBtn.classList.remove('d-none');
+    }
+  }
+</script>

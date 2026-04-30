@@ -542,6 +542,25 @@ def sync_keka_data_to_dbx():
         traceback.print_exc()
         sync_errors.append("leave_requests")
 
+    # ── 8. Clients ─────────────────────────────────────────────────────────────
+    try:
+        clients_table = os.getenv("KEKA_CLIENTS_TABLE", "keka_clients")
+        clients_url   = f"{base_url}/api/v1/psa/clients"
+
+        print(f"[INFO] Fetching clients from: {clients_url}")
+        client_data = _fetch_all_pages(clients_url, headers)
+        print(f"[INFO] Fetched {len(client_data)} clients.")
+
+        if client_data:
+            sync_to_dbx_table(clients_table, client_data)
+        else:
+            print("[WARN] No client data returned from Keka. Skipping clients sync.")
+
+    except Exception as e:
+        print(f"[ERROR] Clients sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("clients")
+
     # ── Summary ────────────────────────────────────────────────────────────────
 
     # Always invalidate cache — even on partial errors, successfully synced
