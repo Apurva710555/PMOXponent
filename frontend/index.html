@@ -37,9 +37,29 @@
           <i class="bi bi-folder-fill"></i> Projects
         </a>
 
-        <a class="nav-link" data-bs-toggle="tab" href="#reports-tab-pane" role="tab" id="reportsTabLink">
-          <i class="bi bi-bar-chart-fill"></i> Reports
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#dashboardsSubMenu" role="button" aria-expanded="false" aria-controls="dashboardsSubMenu" id="dashboardsMenuToggle" onclick="document.getElementById('reportsTabLinkHidden').click()">
+          <span><i class="bi bi-bar-chart-fill"></i> Dashboards</span>
+          <i class="bi bi-chevron-down" style="font-size: 0.75rem;"></i>
         </a>
+
+        <!-- Hidden tab link to keep the bootstrap tab mechanism working -->
+        <a class="d-none" data-bs-toggle="tab" href="#reports-tab-pane" id="reportsTabLinkHidden"></a>
+
+        <div class="collapse" id="dashboardsSubMenu">
+          <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
+            <a class="nav-link active" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Overview</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Timesheet Compliance</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Talent Pool Overview</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Blocked Resource</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Future Pool</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-resource-master-link" data-bs-toggle="tab" href="#report-resource-master" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Master</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resigned Resources</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-contract-link" data-bs-toggle="tab" href="#report-contract" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Direct Contract & 3rd P...</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-demand-link" data-bs-toggle="tab" href="#report-demand" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Demand Tracker</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-utilization-link" data-bs-toggle="tab" href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Utilization</a>
+            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-certification-link" data-bs-toggle="tab" href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Employee Certification</a>
+          </div>
+        </div>
 
       </nav>
 
