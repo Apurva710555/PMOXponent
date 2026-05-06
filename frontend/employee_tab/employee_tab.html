@@ -117,9 +117,12 @@
 
   </div>
 
-</div>
+</div><!-- /.tab-pane -->
 
-<!-- ── Status Comment Modal ─────────────────────────────────── -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     Status Comment Modal
+     ══════════════════════════════════════════════════════════════ -->
 <div id="empStatusModalOverlay" class="status-modal-overlay" style="display:none">
   <div class="status-modal-box">
     <div class="status-modal-header">
@@ -141,5 +144,99 @@
       <button class="status-btn-cancel" id="empStatusCancelBtn" onclick="_cancelStatusModal()">Cancel</button>
       <button class="status-btn-submit" id="empStatusSubmitBtn" onclick="_submitStatusModal()">Submit</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     Add Certification Modal
+     ══════════════════════════════════════════════════════════════ -->
+<div id="certModalOverlay" class="status-modal-overlay" style="display:none">
+  <div class="cert-modal-box">
+
+    <div class="status-modal-header">
+      <i class="bi bi-award-fill"></i>
+      <span>Add Certification</span>
+    </div>
+
+    <div class="cert-modal-body">
+
+      <!-- Row 1: Certification Name (full width) -->
+      <div class="cert-form-row">
+        <div class="cert-form-group cert-form-wide">
+          <label>Certification Name <span class="req-star">*</span></label>
+          <input type="text" id="certFieldName" class="cert-form-input"
+                 placeholder="e.g. AWS Certified Solutions Architect">
+          <div id="certFieldNameError" class="status-modal-error" style="display:none">
+            <i class="bi bi-exclamation-circle-fill"></i> Certification name is required.
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Technology | Type | Amount -->
+      <div class="cert-form-row">
+        <div class="cert-form-group">
+          <label>Technology / Domain</label>
+          <input type="text" id="certFieldTech" class="cert-form-input"
+                 placeholder="e.g. AWS, Azure, SQL">
+        </div>
+        <div class="cert-form-group">
+          <label>Type</label>
+          <select id="certFieldType" class="cert-form-select">
+            <option value="Self">Self</option>
+            <option value="Self">Free</option>
+            <option value="Paid">Paid</option>
+          </select>
+        </div>
+        <div class="cert-form-group">
+          <label>Amount (₹) <span class="cert-optional">(if Paid)</span></label>
+          <input type="number" id="certFieldAmount" class="cert-form-input"
+                 placeholder="e.g. 25000" min="0">
+        </div>
+      </div>
+
+      <!-- Row 3: Completion Date | Expiry Date -->
+      <div class="cert-form-row">
+        <div class="cert-form-group">
+          <label>Completion Date</label>
+          <input type="date" id="certFieldCompletion" class="cert-form-input">
+        </div>
+        <div class="cert-form-group">
+          <label>Expiry Date <span class="cert-optional">(optional)</span></label>
+          <input type="date" id="certFieldExpiry" class="cert-form-input">
+        </div>
+      </div>
+
+      <!-- Row 4: Note (full width) -->
+      <div class="cert-form-row">
+        <div class="cert-form-group cert-form-wide">
+          <label>Note <span class="cert-optional">(optional)</span></label>
+          <textarea id="certFieldNote" class="cert-form-textarea" rows="2"
+                    placeholder="Any additional notes..."></textarea>
+        </div>
+      </div>
+
+      <!-- Global submit error -->
+      <div id="certModalError" class="status-modal-error" style="display:none">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span id="certModalErrorText"></span>
+      </div>
+
+    </div><!-- /.cert-modal-body -->
+
+    <div class="cert-modal-footer">
+      <!-- LEFT: Clear button -->
+      <button class="cert-btn-clear" onclick="_clearCertForm()">
+        <i class="bi bi-eraser"></i> Clear
+      </button>
+      <!-- RIGHT: Cancel + Submit -->
+      <div class="cert-footer-right">
+        <button class="status-btn-cancel" onclick="_closeCertModal()">Cancel</button>
+        <button class="cert-btn-submit" id="certSubmitBtn" onclick="_submitCertModal()">
+          <i class="bi bi-plus-circle"></i> Add Certificate
+        </button>
+      </div>
+    </div>
+
   </div>
 </div>

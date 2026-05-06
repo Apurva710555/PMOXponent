@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 import os
+import time
 import requests
 from backend.shared.dbx_utils import fetch_table_data, scd2_update_status, execute_query
 from backend.shared.keka_sync import get_keka_access_token, _keka_headers
@@ -119,13 +120,12 @@ def get_employee_timesheet():
             page += 1
 
         # ── Step 2: Build project name map from Databricks ───────
-        # Mst_Project_info has: id (UUID) → name (display name)
         proj_map = {}
         try:
             proj_table = os.getenv("KEKA_PROJECTS_TABLE", "keka_projects")
-            projects = fetch_table_data(proj_table)
+            projects   = fetch_table_data(proj_table)
             for p in projects:
-                pid = str(p.get("id", "")).strip()
+                pid   = str(p.get("id",   "")).strip()
                 pname = str(p.get("name", "")).strip()
                 if pid and pname:
                     proj_map[pid] = pname
@@ -133,25 +133,24 @@ def get_employee_timesheet():
             print(f"[WARN] Could not load project names: {proj_err}")
 
         # ── Step 3: Build task name map via Keka API ─────────────
-        # Collect unique project IDs that appear in this batch
         unique_project_ids = {
             str(r.get("projectId", "")).strip()
             for r in all_records
             if r.get("projectId")
         }
 
-        task_map = {}  # taskId → taskName
+        task_map = {}
         for proj_id in unique_project_ids:
             if not proj_id:
                 continue
             try:
                 tasks_url = f"{base_url}/api/v1/psa/projects/{proj_id}/tasks"
-                t_resp = requests.get(tasks_url, headers=headers, timeout=20)
+                t_resp    = requests.get(tasks_url, headers=headers, timeout=20)
                 if t_resp.status_code == 200:
-                    t_body = t_resp.json()
+                    t_body    = t_resp.json()
                     task_list = t_body.get("data", []) if isinstance(t_body, dict) else (t_body if isinstance(t_body, list) else [])
                     for task in task_list:
-                        tid   = str(task.get("id", "")).strip()
+                        tid   = str(task.get("id",   "")).strip()
                         tname = str(task.get("name", "")).strip()
                         if tid and tname:
                             task_map[tid] = tname
@@ -161,25 +160,23 @@ def get_employee_timesheet():
         # ── Step 4: Enrich records with resolved names ────────────
         for rec in all_records:
             proj_id = str(rec.get("projectId", "")).strip()
-            task_id = str(rec.get("taskId", "")).strip()
-            rec["projectName"] = proj_map.get(proj_id, proj_id)   # fallback to ID if not found
-            rec["taskName"]    = task_map.get(task_id, task_id)   # fallback to ID if not found
+            task_id = str(rec.get("taskId",    "")).strip()
+            rec["projectName"] = proj_map.get(proj_id, proj_id)
+            rec["taskName"]    = task_map.get(task_id, task_id)
 
         return jsonify({"status": "success", "data": all_records})
 
     except requests.HTTPError as e:
         return jsonify({
-            "status": "error",
+            "status":  "error",
             "message": f"Keka API error: {e.response.status_code} — {e.response.text[:200]}"
         }), 502
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-
 # ── Route 3: SCD2 change-log history for an employee ────────────────────────
 
-# Fields that are diffed between consecutive SCD2 versions
 _HISTORY_DIFF_FIELDS = [
     ("jobTitle",        "Job Title"),
     ("department",      "Department"),
@@ -208,11 +205,6 @@ def get_employee_history():
     """
     Returns an ordered change-log derived from SCD2 rows for a given employee.
 
-    Each entry describes:
-      - when the version started / ended
-      - which fields changed vs the previous version (field-level diff)
-      - the PMO status & comments at that point in time
-
     Query params:
         employeeId — the employeeNumber (human-readable ID, e.g. 100052)
     """
@@ -224,43 +216,34 @@ def get_employee_history():
     try:
         all_rows = fetch_table_data(table_name)
 
-        # Filter to this employee (all SCD2 versions)
         versions = [
             row for row in all_rows
             if str(row.get("employeeNumber", "")).strip() == employee_id
-            or str(row.get("employee_code", "")).strip() == employee_id
+            or str(row.get("employee_code",  "")).strip() == employee_id
         ]
 
         if not versions:
             return jsonify({"status": "success", "data": []})
 
-        # Sort ascending by startdate so we can diff consecutive versions
         def _sort_key(r):
             sd = r.get("startdate") or ""
             return str(sd) if sd not in ("null", "NULL", "None", None) else ""
 
         versions.sort(key=_sort_key)
 
-        # Build change-log entries (newest first for the UI)
         changelog = []
         for i, ver in enumerate(versions):
             prev = versions[i - 1] if i > 0 else None
 
-            # Compute field-level diffs vs previous version
             diffs = []
             if prev:
                 for field_key, field_label in _HISTORY_DIFF_FIELDS:
                     before = _extract_title(prev.get(field_key, ""))
-                    after  = _extract_title(ver.get(field_key, ""))
-                    # Normalise None / empty-like values
+                    after  = _extract_title(ver.get(field_key,  ""))
                     before = before if before not in ("null", "NULL", "None") else ""
                     after  = after  if after  not in ("null", "NULL", "None") else ""
                     if before != after:
-                        diffs.append({
-                            "field":  field_label,
-                            "before": before,
-                            "after":  after,
-                        })
+                        diffs.append({"field": field_label, "before": before, "after": after})
 
             entry = {
                 "version":    i + 1,
@@ -274,7 +257,6 @@ def get_employee_history():
             }
             changelog.append(entry)
 
-        # Return newest-first
         changelog.reverse()
         return jsonify({"status": "success", "data": changelog})
 
@@ -309,7 +291,7 @@ def update_employee_status():
     table_name = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees")
     try:
         scd2_update_status(table_name, employee_number, new_status, new_comments)
-        
+
         from backend.shared.dbx_utils import invalidate_dbx_cache
         invalidate_dbx_cache()
 
@@ -328,74 +310,28 @@ def update_employee_status():
 @employee_bp.route('/api/employee/project-history', methods=['GET'])
 def get_employee_project_history():
     """
-    Returns project assignment history for a given employee by joining:
-      - KEKA_EMPLOYEE_PROJECT_RESOURCES  (employeeId, projectId, startdate, enddate, comment)
-      - KEKA_EMPLOYEES_TABLE             (id → displayName, employeeNumber)
-      - KEKA_PROJECTS_TABLE              (id → name, code)
-
-    Status logic: Active when enddate is NULL/empty, Inactive otherwise.
+    Returns project assignment history for a given employee.
 
     Query params:
         employeeId — the employeeNumber (human-readable ID, e.g. 100052)
     """
-    employee_id = request.args.get('employeeId', '').strip()
+    employee_id     = request.args.get('employeeId', '').strip()
     if not employee_id:
         return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
 
     resources_table = os.getenv("KEKA_EMPLOYEE_PROJECT_RESOURCES", "").strip()
-    projects_table  = os.getenv("KEKA_PROJECTS_TABLE", "").strip()
-    employee_table  = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees").strip()
-    time_table      = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries").strip()
+    projects_table  = os.getenv("KEKA_PROJECTS_TABLE",             "").strip()
+    employee_table  = os.getenv("KEKA_EMPLOYEES_TABLE",  "keka_employees").strip()
+    time_table      = os.getenv("KEKA_TIMEENTRIES_TABLE","keka_timeentries").strip()
     catalog         = os.getenv("CATALOG_NAME", "").strip()
-    schema          = os.getenv("SCHEMA_NAME", "").strip()
+    schema          = os.getenv("SCHEMA_NAME",  "").strip()
 
     if not all([resources_table, projects_table, employee_table, catalog, schema]):
-        return jsonify({
-            "status": "error",
-            "message": "Missing required server configuration: KEKA_EMPLOYEE_PROJECT_RESOURCES, KEKA_PROJECTS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
-        }), 500
+        return jsonify({"status": "error", "message": "Missing required server configuration."}), 500
 
     safe_emp_id = employee_id.replace("'", "''")
 
     try:
-        # sql = f"""
-        #     SELECT
-        #         DISTINCT
-        #         e.displayName AS employee_name,
-        #         e.employeeNumber,
-        #         r.employeeId,
-
-        #         p.name AS projectName,
-        #         p.code AS projectCode,
-
-        #         r.projectId,
-        #         r.startdate,
-        #         r.enddate,
-
-        #         r.comment AS comment,
-
-        #         DATEDIFF(
-        #             TO_DATE(r.enddate),
-        #             TO_DATE(r.startdate)
-        #         ) AS days_worked
-
-        #     FROM `{catalog}`.`{schema}`.`{resources_table}` r
-
-        #     JOIN `{catalog}`.`{schema}`.`{employee_table}` e
-        #         ON r.employeeId = e.id
-
-        #     JOIN `{catalog}`.`{schema}`.`{projects_table}` p
-        #         ON r.projectId = p.id
-
-        #     WHERE e.employeeNumber = '{safe_emp_id}'
-
-        #     ORDER BY
-        #         CASE
-        #             WHEN (r.enddate IS NULL OR r.enddate = '' OR r.enddate = 'None')
-        #             THEN 0 ELSE 1
-        #         END ASC,
-        #         r.startdate DESC
-        # """
         sql = f"""
             WITH emp AS (
                 SELECT id, displayName, employeeNumber
@@ -403,79 +339,61 @@ def get_employee_project_history():
                 WHERE employeeNumber = '{safe_emp_id}'
             ),
             time_summary AS (
-                SELECT 
-                    employeeId, 
-                    projectId, 
-                    COUNT(DISTINCT date) as actual_days_worked,
-                    SUM(CAST(totalMinutes AS DOUBLE)) as total_minutes_worked,
-                    MIN(date) as first_timesheet_date,
-                    MAX(date) as last_timesheet_date
+                SELECT
+                    employeeId,
+                    projectId,
+                    COUNT(DISTINCT date)              AS actual_days_worked,
+                    SUM(CAST(totalMinutes AS DOUBLE))  AS total_minutes_worked,
+                    MIN(date)                          AS first_timesheet_date,
+                    MAX(date)                          AS last_timesheet_date
                 FROM `{catalog}`.`{schema}`.`{time_table}`
                 GROUP BY employeeId, projectId
             )
-
             SELECT
-                e.displayName AS employee_name,
+                e.displayName    AS employee_name,
                 e.employeeNumber,
                 r.employeeId,
-
-                p.name AS projectName,
-                p.code AS projectCode,
-
+                p.name           AS projectName,
+                p.code           AS projectCode,
                 r.projectId,
-                CASE 
-                    WHEN MIN(r.startdate) IS NULL OR MIN(r.startdate) = '' OR MIN(r.startdate) = 'None' THEN MAX(t.first_timesheet_date)
+                CASE
+                    WHEN MIN(r.startdate) IS NULL OR MIN(r.startdate) = '' OR MIN(r.startdate) = 'None'
+                    THEN MAX(t.first_timesheet_date)
                     ELSE MIN(r.startdate)
                 END AS startdate,
-                
-                CASE 
-                    WHEN MAX(r.enddate) IS NULL OR MAX(r.enddate) = '' OR MAX(r.enddate) = 'None' THEN MAX(t.last_timesheet_date)
+                CASE
+                    WHEN MAX(r.enddate) IS NULL OR MAX(r.enddate) = '' OR MAX(r.enddate) = 'None'
+                    THEN MAX(t.last_timesheet_date)
                     ELSE MAX(r.enddate)
                 END AS enddate,
-                MAX(r.comment) AS comment,
-                
-                CASE 
-                    WHEN MAX(p.enddate) IS NOT NULL 
-                         AND MAX(p.enddate) != '' 
-                         AND MAX(p.enddate) != 'None' 
-                         AND CAST(SUBSTRING(MAX(p.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                MAX(r.comment)   AS comment,
+                CASE
+                    WHEN MAX(p.enddate) IS NOT NULL
+                         AND MAX(p.enddate) != ''
+                         AND MAX(p.enddate) != 'None'
+                         AND CAST(SUBSTRING(MAX(p.enddate), 1, 10) AS DATE) < CURRENT_DATE()
                     THEN 'Inactive'
-                    WHEN MAX(r.enddate) IS NOT NULL 
-                         AND MAX(r.enddate) != '' 
-                         AND MAX(r.enddate) != 'None' 
-                         AND CAST(SUBSTRING(MAX(r.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    WHEN MAX(r.enddate) IS NOT NULL
+                         AND MAX(r.enddate) != ''
+                         AND MAX(r.enddate) != 'None'
+                         AND CAST(SUBSTRING(MAX(r.enddate), 1, 10) AS DATE) < CURRENT_DATE()
                     THEN 'Inactive'
                     ELSE 'Active'
                 END AS project_status,
-                
-                COALESCE(MAX(t.actual_days_worked), 0) AS days_worked,
+                COALESCE(MAX(t.actual_days_worked),     0)    AS days_worked,
                 ROUND(COALESCE(MAX(t.total_minutes_worked), 0) / 60.0, 1) AS hours_worked
-
             FROM emp e
-
-            JOIN `{catalog}`.`{schema}`.`{resources_table}` r
-                ON r.employeeId = e.id
-
-            JOIN `{catalog}`.`{schema}`.`{projects_table}` p
-                ON r.projectId = p.id
-                
+            JOIN `{catalog}`.`{schema}`.`{resources_table}` r ON r.employeeId = e.id
+            JOIN `{catalog}`.`{schema}`.`{projects_table}`  p ON r.projectId  = p.id
             LEFT JOIN time_summary t
-                ON LOWER(t.projectId) = LOWER(r.projectId) AND LOWER(t.employeeId) = LOWER(r.employeeId)
-
+                ON LOWER(t.projectId)  = LOWER(r.projectId)
+               AND LOWER(t.employeeId) = LOWER(r.employeeId)
             GROUP BY
-                e.displayName,
-                e.employeeNumber,
-                r.employeeId,
-                p.name,
-                p.code,
-                r.projectId
-
+                e.displayName, e.employeeNumber, r.employeeId,
+                p.name, p.code, r.projectId
             ORDER BY startdate DESC
-            """
-
+        """
         rows = execute_query(sql) or []
-
-        # Databricks SQL calculates exact project_status and dynamic enddate now
         return jsonify({"status": "success", "data": rows})
 
     except Exception as e:
@@ -487,8 +405,7 @@ def get_employee_project_history():
 @employee_bp.route('/api/employee/skills', methods=['GET'])
 def get_employee_skills():
     """
-    Returns skill matrix records for a given employee from the synced
-    keka_employee_skills Databricks table.
+    Returns skill matrix records for a given employee.
 
     Query params:
         employeeId — the employeeNumber (human-readable ID, e.g. 100052)
@@ -497,20 +414,20 @@ def get_employee_skills():
     if not employee_number:
         return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
 
-    skills_table   = os.getenv("KEKA_EMPLOYEE_SKILLS_TABLE", "keka_employee_skills").strip()
-    catalog        = os.getenv("CATALOG_NAME", "").strip()
-    schema         = os.getenv("SCHEMA_NAME", "").strip()
+    skills_table = os.getenv("KEKA_EMPLOYEE_SKILLS_TABLE", "keka_employee_skills").strip()
+    catalog      = os.getenv("CATALOG_NAME", "").strip()
+    schema       = os.getenv("SCHEMA_NAME",  "").strip()
 
     if not all([skills_table, catalog, schema]):
         return jsonify({
-            "status": "error",
+            "status":  "error",
             "message": "Server configuration missing: KEKA_EMPLOYEE_SKILLS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
         }), 500
 
     safe_emp_number = employee_number.replace("'", "''")
 
     try:
-        sql = f"""
+        sql  = f"""
             SELECT *
             FROM `{catalog}`.`{schema}`.`{skills_table}`
             WHERE employeeNumber = '{safe_emp_number}'
@@ -519,8 +436,192 @@ def get_employee_skills():
         return jsonify({"status": "success", "data": rows})
 
     except Exception as e:
-        # Table might not exist yet (before first sync) — return empty gracefully
         error_str = str(e)
         if "TABLE_OR_VIEW_NOT_FOUND" in error_str or "does not exist" in error_str.lower():
             return jsonify({"status": "success", "data": []})
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ── Route 7: Certifications for an employee (GET) ────────────────────────────
+
+@employee_bp.route('/api/employee/certifications', methods=['GET'])
+def get_employee_certifications():
+    """
+    Returns certification records for a given employee from MASTER_CERTIFICATE_TABLE.
+
+    Query params:
+        employeeId — the employeeNumber / E_Code (e.g. 100052)
+    """
+    employee_number = request.args.get('employeeId', '').strip()
+    if not employee_number:
+        return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
+
+    cert_table = os.getenv("MASTER_CERTIFICATE_TABLE", "employee_certification").strip()
+    catalog    = os.getenv("CATALOG_NAME", "").strip()
+    schema     = os.getenv("SCHEMA_NAME",  "").strip()
+
+    if not all([cert_table, catalog, schema]):
+        return jsonify({
+            "status":  "error",
+            "message": "Server configuration missing: MASTER_CERTIFICATE_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
+        }), 500
+
+    safe_emp_number = employee_number.replace("'", "''")
+
+    try:
+        # ── Step 1: Invalidate app-level cache ──────────────────
+        try:
+            from backend.shared.dbx_utils import invalidate_dbx_cache
+            invalidate_dbx_cache()
+        except Exception:
+            pass
+
+        # ── Step 2: Force Delta to pick up the latest commit ────
+        execute_query(f"REFRESH TABLE `{catalog}`.`{schema}`.`{cert_table}`")
+
+        # ── Step 3: Small pause so Delta propagates the write ───
+        #    (backend INSERT + REFRESH still needs a moment)
+        time.sleep(1)
+
+        # ── Step 4: Query fresh data ordered newest first ───────
+        sql = f"""
+            SELECT *
+            FROM `{catalog}`.`{schema}`.`{cert_table}`
+            WHERE CAST(E_Code AS STRING) = '{safe_emp_number}'
+            ORDER BY Completion_Date DESC
+        """
+        rows = execute_query(sql) or []
+        return jsonify({"status": "success", "data": rows})
+
+    except Exception as e:
+        error_str = str(e)
+        if "TABLE_OR_VIEW_NOT_FOUND" in error_str or "does not exist" in error_str.lower():
+            return jsonify({"status": "success", "data": []})
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ── Route 7b: Add a new certification for an employee (POST) ─────────────────
+
+@employee_bp.route('/api/employee/certifications', methods=['POST'])
+def add_employee_certification():
+    """
+    Inserts a new certification row into MASTER_CERTIFICATE_TABLE.
+    Auto-fills E_Name, Exp, Designation from the employee table.
+    """
+    import json
+
+    body          = request.get_json(force=True, silent=True) or {}
+    emp_number    = str(body.get('employeeNumber',     '')).strip()
+    cert_name     = str(body.get('certification_name', '')).strip()
+    technology    = str(body.get('technology',         '')).strip()
+    completion_dt = str(body.get('completion_date',    '')).strip()
+    expiry_dt     = str(body.get('date_of_expiry',     '')).strip()
+    cert_type     = str(body.get('type',          'Self')).strip()
+    amount        = str(body.get('amount_in_rs',       '')).strip()
+    note          = str(body.get('note',               '')).strip()
+
+    if not emp_number:
+        return jsonify({"status": "error", "message": "Missing: employeeNumber"}), 400
+    if not cert_name:
+        return jsonify({"status": "error", "message": "Missing: certification_name"}), 400
+
+    # Type validation
+    valid_types = ["Self", "Free", "Paid"]
+    if cert_type not in valid_types:
+        cert_type = "Self"
+
+    catalog        = os.getenv("CATALOG_NAME",            "").strip()
+    schema         = os.getenv("SCHEMA_NAME",             "").strip()
+    employee_table = os.getenv("KEKA_EMPLOYEES_TABLE",    "Mst_Employee_info").strip()
+    cert_table     = os.getenv("MASTER_CERTIFICATE_TABLE","employee_certification").strip()
+
+    def _s(v):
+        if not v or v in ('None', 'null', ''):
+            return "NULL"
+        return "'" + str(v).replace("'", "''") + "'"
+
+    def _n(v):
+        try:
+            return str(float(v))
+        except Exception:
+            return "NULL"
+
+    try:
+        safe_emp = emp_number.replace("'", "''")
+
+        # ── 1. Fetch employee data ──────────────────────────────
+        lookup_sql = f"""
+            SELECT
+                displayName,
+                jobTitle,
+                totalExperienceInDays
+            FROM `{catalog}`.`{schema}`.`{employee_table}`
+            WHERE employeeNumber = '{safe_emp}'
+            LIMIT 1
+        """
+        emp_rows = execute_query(lookup_sql) or []
+        if not emp_rows:
+            return jsonify({"status": "error", "message": "Employee not found"}), 404
+
+        emp_row = emp_rows[0]
+        e_name  = str(emp_row.get('displayName', '') or '').strip()
+
+        # ── 2. Extract jobTitle → title (handles JSON objects) ──
+        job_title_raw = emp_row.get('jobTitle')
+        designation   = ""
+        if job_title_raw:
+            try:
+                if isinstance(job_title_raw, dict):
+                    designation = job_title_raw.get("title", "")
+                else:
+                    parsed      = json.loads(job_title_raw)
+                    designation = parsed.get("title", "")
+            except Exception:
+                designation = str(job_title_raw)
+        designation = designation.strip() or "N/A"
+
+        # ── 3. Convert experience days → years ──────────────────
+        exp_days  = emp_row.get('totalExperienceInDays')
+        try:
+            exp_years = round(int(exp_days) / 365, 1) if exp_days else None
+        except Exception:
+            exp_years = None
+        exp_val = str(exp_years) if exp_years is not None else "NULL"
+
+        # ── 4. Insert certification row ─────────────────────────
+        insert_sql = f"""
+            INSERT INTO `{catalog}`.`{schema}`.`{cert_table}`
+            (E_Code, E_Name, Exp, Designation,
+             Certification_name, Completion_Date, Technology,
+             Amount_in_Rs, Type, Note, Resigned_Stats, Date_of_Expiry)
+            VALUES (
+                {_s(emp_number)},
+                {_s(e_name)},
+                {exp_val},
+                {_s(designation)},
+                {_s(cert_name)},
+                {_s(completion_dt)},
+                {_s(technology)},
+                {_n(amount)},
+                {_s(cert_type)},
+                {_s(note)},
+                NULL,
+                {_s(expiry_dt)}
+            )
+        """
+        execute_query(insert_sql)
+
+        # ── 5. Force Delta to register the new row immediately ──
+        execute_query(f"REFRESH TABLE `{catalog}`.`{schema}`.`{cert_table}`")
+
+        # ── 6. Short sleep so the commit fully propagates ───────
+        #    Client will still wait an additional ~3 s before its GET.
+        time.sleep(1)
+
+        return jsonify({
+            "status":  "success",
+            "message": "Certification added successfully."
+        })
+
+    except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
