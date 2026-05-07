@@ -1,163 +1,170 @@
-/* ═══════════════════════════════════════════════════════════
-   Employee Tab — Filter Dropdowns + Detail Cards + Sub-Tabs
-   ═══════════════════════════════════════════════════════════ */
+(function() {
+  /* ═══════════════════════════════════════════════════════════
+     Employee Tab — Filter Dropdowns + Detail Cards + Sub-Tabs
+     ═══════════════════════════════════════════════════════════ */
 
-let _empData = [];
-let _currentEmpIdx = 0; // index of currently displayed employee
-let _activeEmpSubTab = "profile"; // tracks which sub-tab is active
+  let _empData = [];
+  let _currentEmpIdx = 0; // index of currently displayed employee
+  let _activeEmpSubTab = "profile"; // tracks which sub-tab is active
 
-/* ── Fields to completely hide ──────────────────────────── */
-const HIDDEN_FIELDS = new Set([
-  "id",
-  "uuid",
-  "createdDate",
-  "modifiedDate",
-  "customAttributes",
-  "profilePhotoUrl",
-  "image",
-  "holidayCalendarId",
-  "trackingPolicyInfo",
-  "attendanceNumber",
-  "secondaryJobTitle",
-  "professionalSummary",
-  "workerType",
-  "timeType",
-  "middleName",
-]);
+  /* ── Fields to completely hide ──────────────────────────── */
+  const HIDDEN_FIELDS = new Set([
+    "id",
+    "uuid",
+    "createdDate",
+    "modifiedDate",
+    "customAttributes",
+    "profilePhotoUrl",
+    "image",
+    "holidayCalendarId",
+    "trackingPolicyInfo",
+    "attendanceNumber",
+    "secondaryJobTitle",
+    "professionalSummary",
+    "workerType",
+    "timeType",
+    "middleName",
+  ]);
 
-/* ── JSON title extraction fields ───────────────────────── */
-const JSON_TITLE_FIELDS = new Set([
-  "expensePolicyInfo",
-  "shiftPolicyInfo",
-  "weeklyOffPolicyInfo",
-  "reportsTo",
-  "department",
-  "businessUnit",
-  "location",
-  "jobTitle",
-  "company",
-  "legalEntity",
-  "costCenter",
-  "payGroup",
-  "payBand",
-  "payGrade",
-  "l2Manager",
-  "reportingManager",
-  "secondaryReportingManager",
-]);
+  /* ── JSON title extraction fields ───────────────────────── */
+  const JSON_TITLE_FIELDS = new Set([
+    "expensePolicyInfo",
+    "shiftPolicyInfo",
+    "weeklyOffPolicyInfo",
+    "reportsTo",
+    "department",
+    "businessUnit",
+    "location",
+    "jobTitle",
+    "company",
+    "legalEntity",
+    "costCenter",
+    "payGroup",
+    "payBand",
+    "payGrade",
+    "l2Manager",
+    "reportingManager",
+    "secondaryReportingManager",
+  ]);
 
-/* ── Better field grouping with hierarchy ───────────────── */
-const FIELD_GROUPS = [
-  {
-    title: "General Information",
-    icon: "bi-person-fill",
-    fields: [
-      "firstName", "lastName", "displayName", "email",
-      "employeeNumber", "designation", "jobTitle", "gender",
-      "isprofilecomplete", "isProfileComplete"
-    ],
-  },
-  {
-    title: "Contact",
-    icon: "bi-telephone-fill",
-    fields: ["workPhone", "homePhone", "personalEmail", "mobilephone", "mobilePhone"],
-  },
-  {
-    title: "Reporting Hierarchy",
-    icon: "bi-diagram-3-fill",
-    fields: ["reportsTo", "l2Manager", "reportingManager", "secondaryReportingManager"],
-  },
-  {
-    title: "Organisation",
-    icon: "bi-building",
-    fields: ["department", "businessUnit", "location", "company", "legalEntity", "costCenter", "city", "countrycode", "countryCode"],
-  },
-  {
-    title: "Employment & Leave",
-    icon: "bi-briefcase-fill",
-    fields: [
-      "dateOfJoining", "joiningdate", "startdate",
-      "probationEndDate", "confirmationDate",
-      "employmentType", "noticePeriod", "totalExperienceInDays",
-      "status", "employeeStatus", "employmentstatus", "contingenttype", "captureschemeinfo", "leaveplaninfo",
-      "exitstatus", "exittype"
-    ],
-  },
-  {
-    title: "Groups & Policies",
-    icon: "bi-shield-check",
-    fields: ["groups", "expensePolicyInfo", "shiftPolicyInfo", "weeklyOffPolicyInfo", "payGroup", "payBand", "payGrade"],
-  },
-  {
-    title: "Personal",
-    icon: "bi-person-vcard",
-    fields: ["nationality", "maritalStatus", "maritalstatus", "dateOfBirth", "relations", "bloodGroup", "bloodgroup", "isprivate"],
-  },
-  // {
-  //   title: "System & Account",
-  //   icon: "bi-hdd-network",
-  //   fields: ["accountstatus", "invitationstatus", "customfields", "comments"]
-  // }
-];
+  /* ── Better field grouping with hierarchy ───────────────── */
+  const FIELD_GROUPS = [
+    {
+      title: "General Information",
+      icon: "bi-person-fill",
+      fields: [
+        "firstName", "lastName", "displayName", "email",
+        "employeeNumber", "designation", "jobTitle", "gender",
+        "isprofilecomplete", "isProfileComplete"
+      ],
+    },
+    {
+      title: "Contact",
+      icon: "bi-telephone-fill",
+      fields: ["workPhone", "homePhone", "personalEmail", "mobilephone", "mobilePhone"],
+    },
+    {
+      title: "Reporting Hierarchy",
+      icon: "bi-diagram-3-fill",
+      fields: ["reportsTo", "l2Manager", "reportingManager", "secondaryReportingManager"],
+    },
+    {
+      title: "Organisation",
+      icon: "bi-building",
+      fields: ["department", "businessUnit", "location", "company", "legalEntity", "costCenter", "city", "countrycode", "countryCode"],
+    },
+    {
+      title: "Employment & Leave",
+      icon: "bi-briefcase-fill",
+      fields: [
+        "dateOfJoining", "joiningdate", "startdate",
+        "probationEndDate", "confirmationDate",
+        "employmentType", "noticePeriod", "totalExperienceInDays",
+        "status", "employeeStatus", "employmentstatus", "contingenttype", "captureschemeinfo", "leaveplaninfo",
+        "exitstatus", "exittype"
+      ],
+    },
+    {
+      title: "Groups & Policies",
+      icon: "bi-shield-check",
+      fields: ["groups", "expensePolicyInfo", "shiftPolicyInfo", "weeklyOffPolicyInfo", "payGroup", "payBand", "payGrade"],
+    },
+    {
+      title: "Personal",
+      icon: "bi-person-vcard",
+      fields: ["nationality", "maritalStatus", "maritalstatus", "dateOfBirth", "relations", "bloodGroup", "bloodgroup", "isprivate"],
+    },
+  ];
 
-/* ── Label overrides for clean display ──────────────────── */
-const LABEL_OVERRIDES = {
-  totalExperienceInDays: "Total Experience",
-  employeeNumber: "Employee ID",
-  displayName: "Display Name",
-  dateOfJoining: "Date of Joining",
-  probationEndDate: "Probation End Date",
-  confirmationDate: "Confirmation Date",
-  employmentType: "Employment Type",
-  noticePeriod: "Notice Period (Days)",
-  employeeStatus: "Status",
-  expensePolicyInfo: "Expense Policy",
-  shiftPolicyInfo: "Shift Policy",
-  weeklyOffPolicyInfo: "Weekly Off Policy",
-  reportsTo: "L1 Manager",
-  l2Manager: "L2 Manager",
-  reportingManager: "Reporting Manager",
-  secondaryReportingManager: "Secondary Manager",
-  businessUnit: "Business Unit",
-  dateOfBirth: "Date of Birth",
-  maritalStatus: "Marital Status",
-  costCenter: "Cost Center",
-  legalEntity: "Legal Entity",
-  payGroup: "Pay Group",
-  payBand: "Pay Band",
-  payGrade: "Pay Grade",
-  workPhone: "Work Phone",
-  homePhone: "Home Phone",
-  personalEmail: "Personal Email",
-  jobTitle: "Job Title",
-  firstName: "First Name",
-  lastName: "Last Name",
-  bloodGroup: "Blood Group",
-  bloodgroup: "Blood Group",
-  accountstatus: "Account Status",
-  invitationstatus: "Invitation Status",
-  employmentstatus: "Employment Status",
-  exitstatus: "Exit Status",
-  exittype: "Exit Type",
-  contingenttype: "Contingent Type",
-  captureschemeinfo: "Capture Scheme",
-  leaveplaninfo: "Leave Plan",
-  countrycode: "Country Code",
-  joiningdate: "Joining Date",
-  mobilephone: "Mobile Phone",
-  isprivate: "Private Profile",
-  isprofilecomplete: "Profile Complete",
-  maritalstatus: "Marital Status",
-};
+  /* ── Label overrides for clean display ──────────────────── */
+  const LABEL_OVERRIDES = {
+    totalExperienceInDays: "Total Experience",
+    employeeNumber: "Employee ID",
+    displayName: "Display Name",
+    dateOfJoining: "Date of Joining",
+    probationEndDate: "Probation End Date",
+    confirmationDate: "Confirmation Date",
+    employmentType: "Employment Type",
+    noticePeriod: "Notice Period (Days)",
+    employeeStatus: "Status",
+    expensePolicyInfo: "Expense Policy",
+    shiftPolicyInfo: "Shift Policy",
+    weeklyOffPolicyInfo: "Weekly Off Policy",
+    reportsTo: "L1 Manager",
+    l2Manager: "L2 Manager",
+    reportingManager: "Reporting Manager",
+    secondaryReportingManager: "Secondary Manager",
+    businessUnit: "Business Unit",
+    dateOfBirth: "Date of Birth",
+    maritalStatus: "Marital Status",
+    costCenter: "Cost Center",
+    legalEntity: "Legal Entity",
+    payGroup: "Pay Group",
+    payBand: "Pay Band",
+    payGrade: "Pay Grade",
+    workPhone: "Work Phone",
+    homePhone: "Home Phone",
+    personalEmail: "Personal Email",
+    jobTitle: "Job Title",
+    firstName: "First Name",
+    lastName: "Last Name",
+    bloodGroup: "Blood Group",
+    bloodgroup: "Blood Group",
+    accountstatus: "Account Status",
+    invitationstatus: "Invitation Status",
+    employmentstatus: "Employment Status",
+    exitstatus: "Exit Status",
+    exittype: "Exit Type",
+    contingenttype: "Contingent Type",
+    captureschemeinfo: "Capture Scheme",
+    leaveplaninfo: "Leave Plan",
+    countrycode: "Country Code",
+    joiningdate: "Joining Date",
+    mobilephone: "Mobile Phone",
+    isprivate: "Private Profile",
+    isprofilecomplete: "Profile Complete",
+    maritalstatus: "Marital Status",
+  };
 
-/* ═══ Init ══════════════════════════════════════════════ */
+  /* ═══ Init ══════════════════════════════════════════════ */
 
-document.addEventListener("DOMContentLoaded", () => {
-  fetchEmployeeData();
-  _initTimesheetDefaults();
-});
+  function init() {
+    if (window._empTabInitialized) return;
+    window._empTabInitialized = true;
+    
+    fetchEmployeeData();
+    _initTimesheetDefaults();
+    _setupStatusListeners();
+    _setupModalBackdrop();
+  }
 
-async function fetchEmployeeData() {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  async function fetchEmployeeData() {
   try {
     const response = await fetch("/api/employee/data");
     const result = await response.json();
@@ -225,7 +232,7 @@ function _initTimesheetDefaults() {
 
 /* ═══ Sub-Tab Switching ═════════════════════════════════ */
 
-function switchEmpTab(tab) {
+  window.switchEmpTab = function(tab) {
   _activeEmpSubTab = tab;
   const panels = document.querySelectorAll(".emp-sub-panel");
   panels.forEach((p) => (p.style.display = "none"));
@@ -282,12 +289,12 @@ function _openStatusModal(status) {
   setTimeout(() => document.getElementById("empStatusComment").focus(), 50);
 }
 
-function _cancelStatusModal() {
+  window._cancelStatusModal = function() {
   _pendingStatus = "";
   document.getElementById("empStatusModalOverlay").style.display = "none";
 }
 
-async function _submitStatusModal() {
+  window._submitStatusModal = async function() {
   const comment = document.getElementById("empStatusComment").value.trim();
   if (!comment) {
     document.getElementById("empStatusCommentError").style.display = "flex";
@@ -364,20 +371,18 @@ async function _submitStatusModal() {
   }
 }
 
-// Close modal on backdrop click
-document.addEventListener("DOMContentLoaded", () => {
-  _initStatusDropdown();
+function _setupModalBackdrop() {
   const overlay = document.getElementById("empStatusModalOverlay");
   if (overlay) {
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) _cancelStatusModal();
     });
   }
-});
+}
 
 /* ═══ Timesheet ════════════════════════════════════════ */
 
-function triggerTimesheetFetch() {
+  window.triggerTimesheetFetch = async function() {
   const emp = _empData[_currentEmpIdx];
   if (!emp) return;
 
@@ -1594,3 +1599,4 @@ function _skillProficiencyClass(raw) {
   if (label === "expert"      || num === 4) return "skill-badge-expert";
   return "skill-badge-default";
 }
+})();

@@ -205,7 +205,7 @@ def sync_keka_data_to_dbx():
 
     # Hoist imports used across multiple sections to avoid Python's UnboundLocalError
     # (importing a name anywhere in a function makes Python treat it as local everywhere)
-    from backend.shared.dbx_utils import sync_to_dbx_table, invalidate_dbx_cache
+    from backend.shared.dbx_utils import sync_to_dbx_table, merge_to_dbx_table, invalidate_dbx_cache
 
     # ── 1. Employees ───────────────────────────────────────────────────────────
     try:
@@ -252,7 +252,7 @@ def sync_keka_data_to_dbx():
         print(f"[INFO] Fetched {len(res_data)} project resources.")
 
         res_table = os.getenv("KEKA_PROJECT_RESOURCES_TABLE", "keka_project_resources")
-        sync_to_dbx_table(res_table, res_data if res_data else [])
+        merge_to_dbx_table(res_table, res_data if res_data else [], ["projectId", "employeeId"])
         if not res_data:
             print("[WARN] No project resources data returned from Keka. Ensuring table exists.")
 
@@ -273,47 +273,57 @@ def sync_keka_data_to_dbx():
         time_url = f"{base_url}/api/v1/psa/timeentries"
         print(f"[INFO] Fetching time entries from: {time_url}")
         
-        start_date = datetime.date(2026, 1, 1)
+        end_date    = datetime.date.today()
+        start_date  = None
+        is_backfill = False
+
         try:
             full_table = f"`{catalog}`.`{schema}`.`{time_table}`"
-            res = execute_query(f"SELECT MAX(date) as max_date FROM {full_table}", use_cache=False)
-            if res and res[0].get("max_date"):
-                # max_date string looks like 'YYYY-MM-DD'
-                md_str = res[0]["max_date"]
-                max_dt = datetime.datetime.strptime(md_str.split("T")[0], "%Y-%m-%d").date()
-                # 7-day buffer to capture retro-active timesheet logs or approvals
-                start_date = max_dt - datetime.timedelta(days=7)
-        except Exception as e:
-            print(f"[INFO] Could not fetch MAX(date) from {time_table}, defaulting to {start_date}. (Table might not exist yet)")
-            
-        end_date = datetime.date.today()
+            res = execute_query(
+                f"SELECT MAX(date) as max_date, COUNT(*) as total_rows FROM {full_table}",
+                use_cache=False
+            )
+            if res and res[0].get("max_date") and int(res[0].get("total_rows", 0) or 0) > 0:
+                # ── NORMAL MODE: table has data → 14-day rolling buffer ────────
+                md_str     = res[0]["max_date"]
+                max_dt     = datetime.datetime.strptime(md_str.split("T")[0], "%Y-%m-%d").date()
+                start_date = max_dt - datetime.timedelta(days=14)
+                print(f"[INFO] Time entries table has data. Using 14-day buffer from {start_date}.")
+            else:
+                # ── BACKFILL MODE: table is empty → fetch 2 years ─────────────
+                is_backfill = True
+                start_date  = end_date.replace(year=end_date.year - 2)
+                print(f"[WARN] Time entries table is empty. Running ONE-TIME 2-year backfill from {start_date}.")
+        except Exception:
+            # Table doesn't exist yet → treat as first run
+            is_backfill = True
+            start_date  = end_date.replace(year=end_date.year - 2)
+            print(f"[INFO] Time entries table not found. Running ONE-TIME 2-year backfill from {start_date}.")
+
         if start_date > end_date:
             start_date = end_date
-            
+
         all_time_entries = []
         
-        # Keka restricts to 60 days max. Use 50 days to be safe.
+        # Keka restricts to ~60 days per call. Chunk in 50-day windows to be safe.
         current_from = start_date
+        chunk_count  = 0
         while current_from <= end_date:
-            current_to = min(current_from + datetime.timedelta(days=50), end_date)
-            
-            print(f"[INFO] Fetching time entries from {current_from} to {current_to}")
+            current_to   = min(current_from + datetime.timedelta(days=50), end_date)
+            chunk_count += 1
+            print(f"[INFO] Fetching time entries chunk {chunk_count}: {current_from} → {current_to}")
             
             extra_params = {
                 "from": current_from.isoformat(),
-                "to": current_to.isoformat()
+                "to":   current_to.isoformat()
             }
-            
             chunk_data = _fetch_all_pages(time_url, headers, extra_params=extra_params)
-            
             if chunk_data:
-                # Keka might occasionally return deeply nested data depending on timeentries API behavior
-                # Ensure we flatten correctly
                 all_time_entries.extend(chunk_data)
-                
             current_from = current_to + datetime.timedelta(days=1)
             
-        print(f"[INFO] Fetched total {len(all_time_entries)} time entries.")
+        mode_label = "backfill (2 years)" if is_backfill else "delta (14-day buffer)"
+        print(f"[INFO] Fetched total {len(all_time_entries)} time entries ({mode_label}, {chunk_count} chunks).")
         
         if all_time_entries:
             merge_timeentries(time_table, all_time_entries)
@@ -324,6 +334,7 @@ def sync_keka_data_to_dbx():
         print(f"[ERROR] Time entries sync failed: {e}")
         traceback.print_exc()
         sync_errors.append("time_entries")
+
 
     # ── 5. Skill Matrix ─────────────────────────────────────────────────────────
     try:
@@ -407,7 +418,8 @@ def sync_keka_data_to_dbx():
             print(f"[INFO] Fetched {len(all_skill_rows)} total skill records across {total_emps} employees.")
 
             if all_skill_rows:
-                sync_to_dbx_table(skills_table, all_skill_rows)
+                # Assuming 'id' is present for the skill
+                merge_to_dbx_table(skills_table, all_skill_rows, ["employeeId", "id"])
             else:
                 print("[WARN] No skill data returned from Keka. Skipping skills sync.")
 
@@ -416,155 +428,93 @@ def sync_keka_data_to_dbx():
         traceback.print_exc()
         sync_errors.append("skill_matrix")
 
-    # ── 6. Holidays ────────────────────────────────────────────────────────────
-    try:
-        import datetime as _dt
-        import json as _json
+    # ── 6/7/8. Parallel Sync (Holidays, Leaves, Clients) ──────────────────────
+    # These three are independent and can be run in parallel to save time.
+    from concurrent.futures import ThreadPoolExecutor
 
-        holidays_table = os.getenv("KEKA_HOLIDAYS_TABLE", "keka_holidays")
-        # Correct endpoint: returns all holiday calendars with their holidays embedded
-        calendars_url = f"{base_url}/api/v1/time/holidayscalendar"
+    def _sync_holidays():
+        try:
+            import datetime as _dt
+            import json as _json
+            holidays_table = os.getenv("KEKA_HOLIDAYS_TABLE", "keka_holidays")
+            calendars_url = f"{base_url}/api/v1/time/holidayscalendar"
+            print("[INFO] Starting holidays sync…")
+            _rate_limiter.wait()
+            cal_resp = requests.get(calendars_url, headers=headers, timeout=30)
+            cal_resp.raise_for_status()
+            cal_body = cal_resp.json()
+            calendars = cal_body.get("data", []) if isinstance(cal_body, dict) else (cal_body if isinstance(cal_body, list) else [])
+            if isinstance(calendars, dict): calendars = calendars.get("results", [])
+            
+            all_holiday_rows = []
+            for cal in calendars:
+                cal_id, cal_name = str(cal.get("id", "")), str(cal.get("name", ""))
+                raw_holidays = cal.get("holidays") or cal.get("holidayList") or []
+                if not raw_holidays and cal_id:
+                    _rate_limiter.wait()
+                    sub_url = f"{base_url}/api/v1/time/holidayscalendar/{cal_id}/holidays"
+                    sub_resp = requests.get(sub_url, headers=headers, timeout=30)
+                    if sub_resp.status_code == 200:
+                        sub_body = sub_resp.json()
+                        raw_holidays = sub_body.get("data", []) if isinstance(sub_body, dict) else (sub_body if isinstance(sub_body, list) else [])
+                for h in raw_holidays:
+                    if isinstance(h, dict):
+                        flat = {k: (_json.dumps(v) if isinstance(v, (dict, list)) else (str(v) if v is not None else None)) for k, v in h.items()}
+                        flat["calendarId"], flat["calendarName"] = cal_id, cal_name
+                        all_holiday_rows.append(flat)
+            if all_holiday_rows:
+                merge_to_dbx_table(holidays_table, all_holiday_rows, ["id"])
+            print(f"[INFO] Holidays sync completed: {len(all_holiday_rows)} records.")
+        except Exception as e:
+            print(f"[ERROR] Holidays sync failed: {e}")
+            sync_errors.append("holidays")
 
-        print("[INFO] Starting holidays sync…")
-        _rate_limiter.wait()
-        cal_resp = requests.get(calendars_url, headers=headers, timeout=30)
-        cal_resp.raise_for_status()
+    def _sync_leaves():
+        try:
+            import datetime as _dt
+            leaves_table = os.getenv("KEKA_LEAVES_TABLE", "keka_leave_requests")
+            leaves_url = f"{base_url}/api/v1/time/leaverequests"
+            print("[INFO] Starting leave requests sync…")
+            CHUNK_DAYS, today = 89, _dt.date.today()
+            window_start = today.replace(year=today.year - 1, month=1, day=1)
+            window_end = today + _dt.timedelta(days=180)
+            all_leave_rows, seen_ids, chunk_start = [], set(), window_start
+            while chunk_start <= window_end:
+                chunk_end = min(chunk_start + _dt.timedelta(days=CHUNK_DAYS), window_end)
+                chunk_data = _fetch_all_pages(leaves_url, headers, extra_params={"from": chunk_start.strftime("%Y-%m-%d"), "to": chunk_end.strftime("%Y-%m-%d")})
+                for row in chunk_data:
+                    row_id = row.get("id") or row.get("leaveRequestId") or id(row)
+                    if row_id not in seen_ids:
+                        seen_ids.add(row_id); all_leave_rows.append(row)
+                chunk_start = chunk_end + _dt.timedelta(days=1)
+            if all_leave_rows:
+                merge_to_dbx_table(leaves_table, all_leave_rows, ["id"])
+            print(f"[INFO] Leaves sync completed: {len(all_leave_rows)} records.")
+        except Exception as e:
+            print(f"[ERROR] Leave requests sync failed: {e}")
+            sync_errors.append("leave_requests")
 
-        cal_body = cal_resp.json()
-        # Unwrap: { "succeeded": true, "data": [...] }  or plain list
-        if isinstance(cal_body, dict):
-            calendars = cal_body.get("data", [])
-            if isinstance(calendars, dict):
-                calendars = calendars.get("results", [])
-        elif isinstance(cal_body, list):
-            calendars = cal_body
-        else:
-            calendars = []
+    def _sync_clients():
+        try:
+            clients_table = os.getenv("KEKA_CLIENTS_TABLE", "keka_clients")
+            clients_url = f"{base_url}/api/v1/psa/clients"
+            print(f"[INFO] Fetching clients from: {clients_url}")
+            client_data = _fetch_all_pages(clients_url, headers)
+            if client_data:
+                merge_to_dbx_table(clients_table, client_data, ["id"])
+            print(f"[INFO] Clients sync completed: {len(client_data)} records.")
+        except Exception as e:
+            print(f"[ERROR] Clients sync failed: {e}")
+            sync_errors.append("clients")
 
-        all_holiday_rows = []
-
-        for cal in calendars:
-            cal_id   = str(cal.get("id", ""))
-            cal_name = str(cal.get("name", ""))
-
-            # Holidays are either nested in the calendar object or need a sub-call
-            raw_holidays = cal.get("holidays") or cal.get("holidayList") or []
-
-            if not raw_holidays and cal_id:
-                # Try the sub-resource pattern if holidays weren't embedded
-                _rate_limiter.wait()
-                sub_url  = f"{base_url}/api/v1/time/holidayscalendar/{cal_id}/holidays"
-                sub_resp = requests.get(sub_url, headers=headers, timeout=30)
-                if sub_resp.status_code == 200:
-                    sub_body     = sub_resp.json()
-                    raw_holidays = (
-                        sub_body.get("data", []) if isinstance(sub_body, dict) else
-                        (sub_body if isinstance(sub_body, list) else [])
-                    )
-
-            for h in raw_holidays:
-                if isinstance(h, dict):
-                    flat = {}
-                    for k, v in h.items():
-                        flat[k] = _json.dumps(v) if isinstance(v, (dict, list)) else (str(v) if v is not None else None)
-                    flat["calendarId"]   = cal_id
-                    flat["calendarName"] = cal_name
-                    all_holiday_rows.append(flat)
-
-            print(f"[INFO] Calendar '{cal_name}': {len(raw_holidays)} holidays.")
-
-        print(f"[INFO] Fetched {len(all_holiday_rows)} total holiday records across {len(calendars)} calendars.")
-
-        if all_holiday_rows:
-            sync_to_dbx_table(holidays_table, all_holiday_rows)
-        else:
-            print("[WARN] No holiday data returned from Keka. Skipping holidays sync.")
-
-    except Exception as e:
-        print(f"[ERROR] Holidays sync failed: {e}")
-        traceback.print_exc()
-        sync_errors.append("holidays")
-
-    # ── 7. Leave Requests ──────────────────────────────────────────────────────
-    try:
-        import datetime as _dt
-
-        leaves_table = os.getenv("KEKA_LEAVES_TABLE", "keka_leave_requests")
-        leaves_url   = f"{base_url}/api/v1/time/leaverequests"
-
-        print("[INFO] Starting leave requests sync…")
-
-        # Keka enforces a hard limit of 90 days per request — chunk accordingly.
-        # Fetch: 12 months prior → 6 months ahead (covers all realistic leave data).
-        CHUNK_DAYS = 89
-        today      = _dt.date.today()
-        window_start = today.replace(year=today.year - 1, month=1, day=1)
-        window_end   = today + _dt.timedelta(days=180)   # 6 months ahead
-
-        all_leave_rows = []
-        seen_ids       = set()   # de-duplicate across chunks
-        chunk_start    = window_start
-
-        while chunk_start <= window_end:
-            chunk_end = min(chunk_start + _dt.timedelta(days=CHUNK_DAYS), window_end)
-            from_str  = chunk_start.strftime("%Y-%m-%d")
-            to_str    = chunk_end.strftime("%Y-%m-%d")
-
-            print(f"[INFO] Fetching leave requests: {from_str} → {to_str}")
-
-            chunk_data = _fetch_all_pages(
-                leaves_url,
-                headers,
-                extra_params={"from": from_str, "to": to_str}
-            )
-
-            new_in_chunk = 0
-            for row in chunk_data:
-                # De-duplicate using id/leaveRequestId (Keka field name varies)
-                row_id = row.get("id") or row.get("leaveRequestId") or id(row)
-                if row_id not in seen_ids:
-                    seen_ids.add(row_id)
-                    all_leave_rows.append(row)
-                    new_in_chunk += 1
-
-            print(f"[INFO] Chunk {from_str}→{to_str}: {len(chunk_data)} records, {new_in_chunk} new.")
-            chunk_start = chunk_end + _dt.timedelta(days=1)
-
-        print(f"[INFO] Fetched {len(all_leave_rows)} unique leave records across all chunks.")
-
-        if all_leave_rows:
-            sync_to_dbx_table(leaves_table, all_leave_rows)
-        else:
-            print("[WARN] No leave request data returned from Keka. Skipping leaves sync.")
-
-    except Exception as e:
-        print(f"[ERROR] Leave requests sync failed: {e}")
-        traceback.print_exc()
-        sync_errors.append("leave_requests")
-
-    # ── 8. Clients ─────────────────────────────────────────────────────────────
-    try:
-        clients_table = os.getenv("KEKA_CLIENTS_TABLE", "keka_clients")
-        clients_url   = f"{base_url}/api/v1/psa/clients"
-
-        print(f"[INFO] Fetching clients from: {clients_url}")
-        client_data = _fetch_all_pages(clients_url, headers)
-        print(f"[INFO] Fetched {len(client_data)} clients.")
-
-        if client_data:
-            sync_to_dbx_table(clients_table, client_data)
-        else:
-            print("[WARN] No client data returned from Keka. Skipping clients sync.")
-
-    except Exception as e:
-        print(f"[ERROR] Clients sync failed: {e}")
-        traceback.print_exc()
-        sync_errors.append("clients")
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        executor.submit(_sync_holidays)
+        executor.submit(_sync_leaves)
+        executor.submit(_sync_clients)
 
     # ── Summary ────────────────────────────────────────────────────────────────
 
-    # Always invalidate cache — even on partial errors, successfully synced
-    # modules must be visible immediately (e.g. skills synced but proj_resources failed).
+    # Always invalidate cache — even on partial errors
     try:
         invalidate_dbx_cache()
     except Exception:
@@ -575,4 +525,4 @@ def sync_keka_data_to_dbx():
         return False
     else:
         print("[INFO] Keka sync completed successfully for all modules.")
-        return True
+        return True

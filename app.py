@@ -65,6 +65,11 @@ def trigger_sync():
     threading.Thread(target=_run_sync, daemon=True).start()
     return jsonify({"status": "success", "message": "Sync started in background. Data will refresh shortly."}), 200
 
+@app.route("/api/sync/status", methods=["GET"])
+def sync_status():
+    global _sync_running
+    return jsonify({"running": _sync_running})
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8081, debug=True)
+    app.run(host="0.0.0.0", port=8081, debug=False)
 
