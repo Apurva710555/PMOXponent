@@ -51,7 +51,7 @@ def update_project_manager():
         if not project_id:
             return jsonify({"status": "error", "message": "projectId is required"}), 400
         if not comments:
-            return jsonify({"status": "error", "message": "comments are required sequence"}), 400
+            return jsonify({"status": "error", "message": "comments are required"}), 400
 
         proj_table = os.getenv("KEKA_PROJECTS_TABLE", "keka_projects")
         
@@ -66,6 +66,8 @@ def update_project_manager():
 
 
 # ── Route 2: Project Resources — resolved via Databricks SQL JOIN ─────────────
+
+_INACTIVE_ACCOUNT_STATUSES = ("0", "2")
 
 @project_bp.route('/api/project/resources', methods=['GET'])
 def get_project_resources():
@@ -127,13 +129,15 @@ def get_project_resources():
             e.accountStatus,
             COALESCE(NULLIF(p.name, ''), r.projectid)                      AS projectName,
             CASE 
-                WHEN r.startdate IS NULL OR r.startdate = '' OR r.startdate = 'None' THEN t.first_timesheet_date
-                ELSE r.startdate
+                WHEN p.ProjectStartDate IS NULL OR p.ProjectStartDate = '' OR p.ProjectStartDate = 'None'
+                THEN t.first_timesheet_date
+                ELSE p.ProjectStartDate
             END AS startdate,
             
             CASE 
-                WHEN r.enddate IS NULL OR r.enddate = '' OR r.enddate = 'None' THEN t.last_timesheet_date
-                ELSE r.enddate
+                WHEN p.ProjectEndDate IS NULL OR p.ProjectEndDate = '' OR p.ProjectEndDate = 'None'
+                THEN t.last_timesheet_date
+                ELSE p.ProjectEndDate
             END AS enddate,
             COALESCE(t.actual_days_worked, 0) AS days_worked
         FROM {R} r
@@ -154,7 +158,7 @@ def get_project_resources():
         for row in rows:
             emp_name = row.get("employeeName") or row.get("employeeid") or "—"
             acc_status = str(row.get("accountStatus")).strip()
-            if acc_status in ("0", "2"):
+            if acc_status in _INACTIVE_ACCOUNT_STATUSES:
                 emp_name += " (Ex-Employee)"
                 
             result.append({

@@ -104,6 +104,14 @@ body {
   font-weight: 600;
 }
 
+.sidebar-sub-link {
+  font-size: 0.78rem !important;
+  padding: 6px 12px !important;
+  margin-left: 36px !important;
+  margin-right: 8px !important;
+  font-weight: 500 !important;
+}
+
 /* ── Header ────────────────────────────────────────────── */
 
 .app-header {

@@ -62,10 +62,14 @@ class GenieService:
         return self._poll_for_response(conversation_id, message_id, token)
 
     def _poll_for_response(self, conversation_id, message_id, token, timeout=90):
-        """Polls the message status until COMPLETED or FAILED, then extracts text."""
+        """
+        Polls the message status until COMPLETED or FAILED, then extracts text.
+        Uses exponential backoff (1s → 2s → 4s → 8s cap) to reduce API pressure (fix L2-2).
+        """
         url = f"{self.workspace_url}/api/2.0/genie/spaces/{self.space_id}/conversations/{conversation_id}/messages/{message_id}"
 
         start_time = time.time()
+        poll_interval = 1  # Start with 1 second (fix L2-2: exponential backoff)
         while time.time() - start_time < timeout:
             response = requests.get(url, headers=self._get_headers(token))
             response.raise_for_status()
@@ -80,7 +84,8 @@ class GenieService:
                 error = message.get("error", {}).get("message", "Unknown error")
                 raise Exception(f"Genie message failed: {error}")
 
-            time.sleep(2)  # Wait 2 seconds before next poll
+            time.sleep(poll_interval)
+            poll_interval = min(poll_interval * 2, 8)  # Cap at 8 seconds
 
         raise Exception("Genie response timed out after 90 seconds")
 

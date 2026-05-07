@@ -25,7 +25,6 @@ def get_employee_data():
             f"WHERE (enddate IS NULL OR enddate = '' OR enddate = 'None') "
             f"AND (accountStatus = 1 OR accountStatus = '1')"
         )
-        from backend.shared.dbx_utils import execute_query
         active = execute_query(sql)
         return jsonify({"status": "success", "data": active})
     except Exception as e:
@@ -64,116 +63,63 @@ def get_employee_timesheet():
             "message": "Missing required params: employeeId, from, to"
         }), 400
 
-    base_url = os.getenv("KEKA_BASE_URL", "").rstrip("/")
-    url = f"{base_url}/api/v1/psa/timeentries"
-
     try:
-        token   = get_keka_access_token()
-        headers = _keka_headers(token)
+        catalog = os.getenv("CATALOG_NAME")
+        schema  = os.getenv("SCHEMA_NAME")
+        time_table = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries")
+        proj_table = os.getenv("KEKA_PROJECTS_TABLE", "keka_projects")
+        
+        safe_emp_id = employee_id.replace("'", "''")
+        safe_from   = from_date.replace("'", "''")
+        safe_to     = to_date.replace("'", "''")
+        
+        # Query time entries from Databricks and join with projects for the name
+        sql = f"""
+            SELECT 
+                t.*,
+                COALESCE(p.name, t.projectId) AS projectName
+            FROM `{catalog}`.`{schema}`.`{time_table}` t
+            LEFT JOIN `{catalog}`.`{schema}`.`{proj_table}` p
+                ON LOWER(t.projectId) = LOWER(p.id)
+                AND (p.enddate IS NULL OR p.enddate = '' OR p.enddate = 'None')
+            WHERE LOWER(t.employeeId) = LOWER('{safe_emp_id}')
+              AND t.date >= '{safe_from}'
+              AND t.date <= '{safe_to}'
+            ORDER BY t.date DESC
+        """
+        
+        rows = execute_query(sql) or []
+        
+        # Enrich formatting (minutes -> hoursFormatted, status -> statusLabel)
+        for rec in rows:
+            minutes = rec.get("totalMinutes")
+            if minutes is not None:
+                try:
+                    m = int(float(minutes))
+                    rec["hoursFormatted"] = f"{m // 60}h {m % 60:02d}m"
+                except (ValueError, TypeError):
+                    rec["hoursFormatted"] = str(minutes)
+            else:
+                rec["hoursFormatted"] = ""
 
-        # ── Step 1: Fetch all time entries (paginated) ───────────
-        all_records = []
-        page = 1
-        while True:
-            params = {
-                "employeeIds": employee_id,
-                "from":        from_date,
-                "to":          to_date,
-                "pageNumber":  page,
-                "pageSize":    100,
-            }
-            resp = requests.get(url, headers=headers, params=params, timeout=30)
-            resp.raise_for_status()
-            body = resp.json()
+            status_raw = rec.get("status")
+            if status_raw is not None:
+                try:
+                    rec["statusLabel"] = _TIME_ENTRY_STATUS.get(int(status_raw), str(status_raw))
+                except (ValueError, TypeError):
+                    rec["statusLabel"] = str(status_raw)
+            else:
+                rec["statusLabel"] = ""
+                
+            # Fallback for task name since we don't sync tasks to Databricks yet
+            if not rec.get("taskName"):
+                rec["taskName"] = rec.get("taskId") or "Task"
 
-            chunk = body.get("data", []) if isinstance(body, dict) else (body if isinstance(body, list) else [])
-            if not chunk:
-                break
+        return jsonify({"status": "success", "data": rows})
 
-            # Basic enrichment: minutes → formatted, status → label
-            for rec in chunk:
-                minutes = rec.get("totalMinutes")
-                if minutes is not None:
-                    try:
-                        m = int(minutes)
-                        rec["hoursFormatted"] = f"{m // 60}h {m % 60:02d}m"
-                    except (ValueError, TypeError):
-                        rec["hoursFormatted"] = str(minutes)
-                else:
-                    rec["hoursFormatted"] = ""
-
-                status_raw = rec.get("status")
-                if status_raw is not None:
-                    try:
-                        rec["statusLabel"] = _TIME_ENTRY_STATUS.get(int(status_raw), str(status_raw))
-                    except (ValueError, TypeError):
-                        rec["statusLabel"] = str(status_raw)
-                else:
-                    rec["statusLabel"] = ""
-
-            all_records.extend(chunk)
-
-            total_pages = body.get("totalPages", 1) if isinstance(body, dict) else 1
-            if page >= total_pages:
-                break
-            page += 1
-
-        # ── Step 2: Build project name map from Databricks ───────
-        # Mst_Project_info has: id (UUID) → name (display name)
-        proj_map = {}
-        try:
-            proj_table = os.getenv("KEKA_PROJECTS_TABLE", "keka_projects")
-            projects = fetch_table_data(proj_table)
-            for p in projects:
-                pid = str(p.get("id", "")).strip()
-                pname = str(p.get("name", "")).strip()
-                if pid and pname:
-                    proj_map[pid] = pname
-        except Exception as proj_err:
-            print(f"[WARN] Could not load project names: {proj_err}")
-
-        # ── Step 3: Build task name map via Keka API ─────────────
-        # Collect unique project IDs that appear in this batch
-        unique_project_ids = {
-            str(r.get("projectId", "")).strip()
-            for r in all_records
-            if r.get("projectId")
-        }
-
-        task_map = {}  # taskId → taskName
-        for proj_id in unique_project_ids:
-            if not proj_id:
-                continue
-            try:
-                tasks_url = f"{base_url}/api/v1/psa/projects/{proj_id}/tasks"
-                t_resp = requests.get(tasks_url, headers=headers, timeout=20)
-                if t_resp.status_code == 200:
-                    t_body = t_resp.json()
-                    task_list = t_body.get("data", []) if isinstance(t_body, dict) else (t_body if isinstance(t_body, list) else [])
-                    for task in task_list:
-                        tid   = str(task.get("id", "")).strip()
-                        tname = str(task.get("name", "")).strip()
-                        if tid and tname:
-                            task_map[tid] = tname
-            except Exception as task_err:
-                print(f"[WARN] Could not load tasks for project {proj_id}: {task_err}")
-
-        # ── Step 4: Enrich records with resolved names ────────────
-        for rec in all_records:
-            proj_id = str(rec.get("projectId", "")).strip()
-            task_id = str(rec.get("taskId", "")).strip()
-            rec["projectName"] = proj_map.get(proj_id, proj_id)   # fallback to ID if not found
-            rec["taskName"]    = task_map.get(task_id, task_id)   # fallback to ID if not found
-
-        return jsonify({"status": "success", "data": all_records})
-
-    except requests.HTTPError as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Keka API error: {e.response.status_code} — {e.response.text[:200]}"
-        }), 502
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 
@@ -222,14 +168,17 @@ def get_employee_history():
 
     table_name = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees")
     try:
-        all_rows = fetch_table_data(table_name)
+        # Use targeted SQL instead of fetching the entire table (fix L3-8)
+        catalog    = os.getenv("CATALOG_NAME")
+        schema     = os.getenv("SCHEMA_NAME")
+        safe_emp_id = employee_id.replace("'", "''")
 
-        # Filter to this employee (all SCD2 versions)
-        versions = [
-            row for row in all_rows
-            if str(row.get("employeeNumber", "")).strip() == employee_id
-            or str(row.get("employee_code", "")).strip() == employee_id
-        ]
+        sql = (
+            f"SELECT * FROM `{catalog}`.`{schema}`.`{table_name}` "
+            f"WHERE employeeNumber = '{safe_emp_id}' "
+            f"ORDER BY startdate ASC"
+        )
+        versions = execute_query(sql) or []
 
         if not versions:
             return jsonify({"status": "success", "data": []})
@@ -329,7 +278,7 @@ def update_employee_status():
 def get_employee_project_history():
     """
     Returns project assignment history for a given employee by joining:
-      - KEKA_EMPLOYEE_PROJECT_RESOURCES  (employeeId, projectId, startdate, enddate, comment)
+      - KEKA_PROJECT_RESOURCES_TABLE  (employeeId, projectId, startdate, enddate, comment)
       - KEKA_EMPLOYEES_TABLE             (id → displayName, employeeNumber)
       - KEKA_PROJECTS_TABLE              (id → name, code)
 
@@ -342,7 +291,7 @@ def get_employee_project_history():
     if not employee_id:
         return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
 
-    resources_table = os.getenv("KEKA_EMPLOYEE_PROJECT_RESOURCES", "").strip()
+    resources_table = os.getenv("KEKA_PROJECT_RESOURCES_TABLE", "").strip()
     projects_table  = os.getenv("KEKA_PROJECTS_TABLE", "").strip()
     employee_table  = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees").strip()
     time_table      = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries").strip()
@@ -352,50 +301,13 @@ def get_employee_project_history():
     if not all([resources_table, projects_table, employee_table, catalog, schema]):
         return jsonify({
             "status": "error",
-            "message": "Missing required server configuration: KEKA_EMPLOYEE_PROJECT_RESOURCES, KEKA_PROJECTS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
+            "message": "Missing required server configuration: KEKA_PROJECT_RESOURCES_TABLE, KEKA_PROJECTS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
         }), 500
 
     safe_emp_id = employee_id.replace("'", "''")
 
     try:
-        # sql = f"""
-        #     SELECT
-        #         DISTINCT
-        #         e.displayName AS employee_name,
-        #         e.employeeNumber,
-        #         r.employeeId,
-
-        #         p.name AS projectName,
-        #         p.code AS projectCode,
-
-        #         r.projectId,
-        #         r.startdate,
-        #         r.enddate,
-
-        #         r.comment AS comment,
-
-        #         DATEDIFF(
-        #             TO_DATE(r.enddate),
-        #             TO_DATE(r.startdate)
-        #         ) AS days_worked
-
-        #     FROM `{catalog}`.`{schema}`.`{resources_table}` r
-
-        #     JOIN `{catalog}`.`{schema}`.`{employee_table}` e
-        #         ON r.employeeId = e.id
-
-        #     JOIN `{catalog}`.`{schema}`.`{projects_table}` p
-        #         ON r.projectId = p.id
-
-        #     WHERE e.employeeNumber = '{safe_emp_id}'
-
-        #     ORDER BY
-        #         CASE
-        #             WHEN (r.enddate IS NULL OR r.enddate = '' OR r.enddate = 'None')
-        #             THEN 0 ELSE 1
-        #         END ASC,
-        #         r.startdate DESC
-        # """
+        # Using direct CTE query instead of old dead-code SQL (removed per code review L2-3)
         sql = f"""
             WITH emp AS (
                 SELECT id, displayName, employeeNumber
@@ -424,26 +336,23 @@ def get_employee_project_history():
 
                 r.projectId,
                 CASE 
-                    WHEN MIN(r.startdate) IS NULL OR MIN(r.startdate) = '' OR MIN(r.startdate) = 'None' THEN MAX(t.first_timesheet_date)
-                    ELSE MIN(r.startdate)
+                    WHEN MAX(p.ProjectStartDate) IS NULL OR MAX(p.ProjectStartDate) = '' OR MAX(p.ProjectStartDate) = 'None'
+                    THEN COALESCE(MAX(t.first_timesheet_date), '')
+                    ELSE MAX(p.ProjectStartDate)
                 END AS startdate,
                 
                 CASE 
-                    WHEN MAX(r.enddate) IS NULL OR MAX(r.enddate) = '' OR MAX(r.enddate) = 'None' THEN MAX(t.last_timesheet_date)
-                    ELSE MAX(r.enddate)
+                    WHEN MAX(p.ProjectEndDate) IS NULL OR MAX(p.ProjectEndDate) = '' OR MAX(p.ProjectEndDate) = 'None'
+                    THEN COALESCE(MAX(t.last_timesheet_date), '')
+                    ELSE MAX(p.ProjectEndDate)
                 END AS enddate,
-                MAX(r.comment) AS comment,
+                r.name AS comment,
                 
                 CASE 
-                    WHEN MAX(p.enddate) IS NOT NULL 
-                         AND MAX(p.enddate) != '' 
-                         AND MAX(p.enddate) != 'None' 
-                         AND CAST(SUBSTRING(MAX(p.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
-                    THEN 'Inactive'
-                    WHEN MAX(r.enddate) IS NOT NULL 
-                         AND MAX(r.enddate) != '' 
-                         AND MAX(r.enddate) != 'None' 
-                         AND CAST(SUBSTRING(MAX(r.enddate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    WHEN MAX(p.ProjectEndDate) IS NOT NULL 
+                         AND MAX(p.ProjectEndDate) != '' 
+                         AND MAX(p.ProjectEndDate) != 'None' 
+                         AND CAST(SUBSTRING(MAX(p.ProjectEndDate), 1, 10) AS DATE) < CURRENT_DATE() 
                     THEN 'Inactive'
                     ELSE 'Active'
                 END AS project_status,
@@ -458,6 +367,7 @@ def get_employee_project_history():
 
             JOIN `{catalog}`.`{schema}`.`{projects_table}` p
                 ON r.projectId = p.id
+                AND (p.enddate IS NULL OR p.enddate = '' OR p.enddate = 'None')
                 
             LEFT JOIN time_summary t
                 ON LOWER(t.projectId) = LOWER(r.projectId) AND LOWER(t.employeeId) = LOWER(r.employeeId)
@@ -468,7 +378,8 @@ def get_employee_project_history():
                 r.employeeId,
                 p.name,
                 p.code,
-                r.projectId
+                r.projectId,
+                r.name
 
             ORDER BY startdate DESC
             """

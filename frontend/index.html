@@ -47,17 +47,17 @@
 
         <div class="collapse" id="dashboardsSubMenu">
           <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
-            <a class="nav-link active" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Overview</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Timesheet Compliance</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Talent Pool Overview</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Blocked Resource</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Future Pool</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-resource-master-link" data-bs-toggle="tab" href="#report-resource-master" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Master</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resigned Resources</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-contract-link" data-bs-toggle="tab" href="#report-contract" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Direct Contract & 3rd P...</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-demand-link" data-bs-toggle="tab" href="#report-demand" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Demand Tracker</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-utilization-link" data-bs-toggle="tab" href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Utilization</a>
-            <a class="nav-link" style="font-size: 0.78rem; padding: 6px 12px; margin-left: 36px; margin-right: 8px;" id="report-certification-link" data-bs-toggle="tab" href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Employee Certification</a>
+            <a class="nav-link sidebar-sub-link active" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Overview</a>
+            <a class="nav-link sidebar-sub-link" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Timesheet Compliance</a>
+            <a class="nav-link sidebar-sub-link" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Talent Pool Overview</a>
+            <a class="nav-link sidebar-sub-link" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Blocked Resource</a>
+            <a class="nav-link sidebar-sub-link" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Future Pool</a>
+            <a class="nav-link sidebar-sub-link" id="report-resource-master-link" data-bs-toggle="tab" href="#report-resource-master" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Master</a>
+            <a class="nav-link sidebar-sub-link" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resigned Resources</a>
+            <a class="nav-link sidebar-sub-link" id="report-contract-link" data-bs-toggle="tab" href="#report-contract" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Direct Contract & 3rd P...</a>
+            <a class="nav-link sidebar-sub-link" id="report-demand-link" data-bs-toggle="tab" href="#report-demand" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Demand Tracker</a>
+            <a class="nav-link sidebar-sub-link" id="report-utilization-link" data-bs-toggle="tab" href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Utilization</a>
+            <a class="nav-link sidebar-sub-link" id="report-certification-link" data-bs-toggle="tab" href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Employee Certification</a>
           </div>
         </div>
 
@@ -131,7 +131,7 @@
   <script src="{{ url_for('static', filename='employee_tab/employee_tab.js') }}"></script>
   <script src="{{ url_for('static', filename='project_tab/project_tab.js') }}"></script>
 
-  <!-- Sync Button Script -->
+  <!-- Sync & Dashboard Script -->
   <script>
     async function triggerSync() {
       const card = document.querySelector('.sync-card');
@@ -147,26 +147,45 @@
 
         _showToast(data.message || 'Sync started!', 'success');
 
-        // ✅ SAVE TIME AFTER SUCCESS
-        const now = new Date().toLocaleString('en-IN', {
-          day: '2-digit',
-          month: 'numeric',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-
-        localStorage.setItem('last_sync_time', now);
-        updateLastSyncTime();
-
-        setTimeout(() => { location.reload(); }, 8000);
+        // Poll for completion
+        _startSyncPolling();
 
       } catch (err) {
         _showToast('Sync failed: ' + err.message, 'error');
-      } finally {
         card.style.opacity = "1";
         icon.classList.remove('spin');
       }
+    }
+
+    function _startSyncPolling() {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/sync/status');
+          const data = await res.json();
+          
+          if (!data.running) {
+            clearInterval(interval);
+            
+            // ✅ SAVE TIME AFTER SUCCESS
+            const now = new Date().toLocaleString('en-IN', {
+              day: '2-digit', month: 'numeric', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            });
+            localStorage.setItem('last_sync_time', now);
+            updateLastSyncTime();
+            
+            const card = document.querySelector('.sync-card');
+            const icon = document.getElementById('syncIcon');
+            card.style.opacity = "1";
+            icon.classList.remove('spin');
+            
+            _showToast('Sync completed! Refreshing data...', 'success');
+            setTimeout(() => { location.reload(); }, 2000);
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 3000);
     }
 
     function _showToast(msg, type) {
@@ -176,6 +195,24 @@
       toast.style.display = 'block';
       setTimeout(() => { toast.style.display = 'none'; }, 6000);
     }
+
+    // Lazy-load dashboard iframes
+    document.addEventListener("DOMContentLoaded", () => {
+      const dashboardLinks = document.querySelectorAll('.sidebar-sub-link');
+      dashboardLinks.forEach(link => {
+        link.addEventListener('shown.bs.tab', (e) => {
+          const targetId = e.target.getAttribute('href').substring(1);
+          const panel = document.getElementById(targetId);
+          if (panel) {
+            const iframe = panel.querySelector('iframe');
+            if (iframe && iframe.getAttribute('data-src')) {
+              iframe.setAttribute('src', iframe.getAttribute('data-src'));
+              iframe.removeAttribute('data-src');
+            }
+          }
+        });
+      });
+    });
   </script>
 
   <!-- Ask PMOXponent Chatbot Script -->

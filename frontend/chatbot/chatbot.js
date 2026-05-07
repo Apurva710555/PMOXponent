@@ -24,6 +24,15 @@
     };
 
     /**
+     * Basic XSS escape helper
+     */
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
      * Sends the user's message to the backend and renders the Genie response.
      */
     window.pmoxSend = async function() {
@@ -70,8 +79,9 @@
             typingIndicator.innerHTML = '';
 
             if (data.status === 'success') {
-                // Parse basic markdown from Genie into HTML
-                let formattedAnswer = data.answer
+                // Sanitize and then parse basic markdown from Genie into HTML
+                let safeAnswer = escapeHtml(data.answer || '');
+                let formattedAnswer = safeAnswer
                     .replace(/\n\n/g, '<br><br>')
                     .replace(/\n/g, '<br>')
                     .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
@@ -84,14 +94,13 @@
                     localStorage.setItem(CHATBOT_STORAGE_KEY, data.conversation_id);
                 }
             } else {
-                typingIndicator.innerHTML = 'Oops! ' + (data.message || 'I encountered an issue.');
-                typingIndicator.classList.add('error-msg'); // Optional styling
+                typingIndicator.innerHTML = 'Oops! ' + escapeHtml(data.message || 'I encountered an issue.');
+                typingIndicator.classList.add('error-msg');
             }
 
         } catch (error) {
             console.error('Chatbot API Error:', error);
             typingIndicator.classList.remove('pmox-typing');
-            typingIndicator.innerHTML = '';
             typingIndicator.innerHTML = 'Server unreachable. Please try again later.';
         }
 
