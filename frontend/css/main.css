@@ -801,228 +801,106 @@ body {
   gap: 6px;
 }
 
+/* ── Timesheet Table Wrapper ───────────────────────── */
+
 .ts-table-wrap {
   overflow-x: auto;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  padding: 4px;
 }
+
+/* ── Main Table ────────────────────────────────────── */
 
 .emp-timesheet-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: var(--clr-surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  font-size: 0.84rem;
+  table-layout: fixed;
+  background: transparent;
 }
+
+/* ── Equal Column Widths ───────────────────────────── */
+
+.emp-timesheet-table th,
+.emp-timesheet-table td {
+  width: 16.66%;
+}
+
+/* ── Header ────────────────────────────────────────── */
 
 .emp-timesheet-table thead th {
   background: var(--clr-primary);
   color: #fff;
+  padding: 14px;
+  text-align: center;
   font-size: 0.76rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 11px 14px;
-  white-space: nowrap;
   border: none;
+  /* border-radius: 12px; */
+  border-right: 1px solid rgba(255,255,255,0.08);
+  white-space: nowrap;
 }
+
+.emp-timesheet-table thead th:last-child {
+  border-right: none;
+}
+/* ── Body Cells ────────────────────────────────────── */
 
 .emp-timesheet-table tbody td {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--clr-border);
+  background: #fff;
+  padding: 18px 14px;
+  text-align: center;
   vertical-align: middle;
+  border: 1px solid #edf1f5;
+  
+  font-size: 0.84rem;
   color: var(--clr-text);
-}
-
-.emp-timesheet-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.emp-timesheet-table tbody tr:hover {
-  background: rgba(36, 91, 174, 0.04);
+  border-bottom: 1px solid #edf1f5;
+border-right: 1px solid #f3f4f6;
+  /* box-shadow: 0 1px 4px rgba(0,0,0,0.04); */
 }
 
 .emp-timesheet-table tbody tr:nth-child(even) {
-  background: #fafbfc;
+  background: #fafbfd;
 }
 
-.emp-timesheet-table tbody tr:nth-child(even):hover {
-  background: rgba(36, 91, 174, 0.04);
+.emp-timesheet-table tbody tr:hover {
+  background: #f4f8ff;
 }
 
-/* Extra attendance status badge variants */
-.badge-leave {
-  background: rgba(240, 173, 78, 0.14);
-  color: #b07800;
-}
-.badge-holiday {
-  background: rgba(23, 162, 184, 0.12);
-  color: var(--clr-info);
-}
-.badge-weekoff {
-  background: rgba(108, 117, 125, 0.12);
-  color: var(--clr-text-muted);
-}
-.badge-halfday {
-  background: rgba(36, 91, 174, 0.10);
-  color: var(--clr-primary);
+/* ── Hover ─────────────────────────────────────────── */
+
+.emp-timesheet-table tbody tr:hover td {
+  background: #f8fbff;
+  transition: background 0.18s ease;
 }
 
-/* ═══════════════════════════════════════════════════════
-   History Timeline
-   ═══════════════════════════════════════════════════════ */
+/* ── Cell Styling ──────────────────────────────────── */
 
-.hist-summary {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--clr-text-muted);
-  margin-bottom: var(--sp-lg);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hist-timeline {
-  position: relative;
-  padding-left: 28px;
-}
-
-.hist-timeline::before {
-  content: '';
-  position: absolute;
-  left: 11px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--clr-border);
-  border-radius: 2px;
-}
-
-.hist-item {
-  position: relative;
-  margin-bottom: var(--sp-lg);
-}
-
-.hist-dot {
-  position: absolute;
-  left: -22px;
-  top: 14px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--clr-primary);
-  border: 2px solid var(--clr-surface);
-  box-shadow: 0 0 0 2px var(--clr-primary);
-}
-
-.hist-card {
-  background: var(--clr-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.hist-ts {
-  padding: 10px var(--sp-lg);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--clr-primary);
-  background: var(--clr-bg);
-  border-bottom: 1px solid var(--clr-border);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.hist-changes {
-  padding: var(--sp-md) var(--sp-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.hist-change-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.83rem;
-  flex-wrap: wrap;
-}
-
-.hist-field-label {
-  font-weight: 600;
-  color: var(--clr-text-muted);
-  min-width: 120px;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.hist-before {
-  color: var(--clr-text-muted);
-  background: rgba(108, 117, 125, 0.1);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.82rem;
-  text-decoration: line-through;
-}
-
-.hist-after {
-  color: var(--clr-text);
-  background: rgba(36, 91, 174, 0.09);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.hist-arrow {
-  color: var(--clr-primary);
-  font-size: 0.9rem;
-}
-
-.hist-no-change {
-  padding: var(--sp-md) var(--sp-lg);
-  font-size: 0.82rem;
-  color: var(--clr-text-muted);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-/* ── Timesheet table — column control & alignment ───────── */
-
-/* Column width control via header classes */
-.emp-timesheet-table .ts-th-date  { width: 100px; }
-.emp-timesheet-table .ts-th-dur   { width: 100px; }
-.emp-timesheet-table .ts-th-center { width: 90px; text-align: center; }
-
-/* Cell-level alignment classes */
 .emp-timesheet-table .ts-date-cell {
-  white-space: nowrap;
   font-size: 0.82rem;
-  color: var(--clr-text-muted);
   font-weight: 500;
-  width: 100px;
+  color: #5b6472;
+  white-space: nowrap;
 }
 
 .emp-timesheet-table .ts-dur-cell {
-  white-space: nowrap;
-  width: 100px;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--clr-primary);
-  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .emp-timesheet-table .ts-proj-cell {
-  font-weight: 600;
   font-size: 0.84rem;
+  font-weight: 600;
   color: var(--clr-text);
 }
 
 .emp-timesheet-table .ts-task-cell {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--clr-text-muted);
 }
 
@@ -1031,20 +909,36 @@ body {
   white-space: nowrap;
 }
 
-/* ID fallback chip (when name isn't resolved) */
+/* ── Badge Alignment ───────────────────────────────── */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* ── Fallback ID Chip ──────────────────────────────── */
+
 .ts-id-chip {
   display: inline-block;
-  font-size: 0.73rem;
-  font-family: 'Consolas', 'Courier New', monospace;
-  background: rgba(36, 91, 174, 0.08);
-  color: var(--clr-primary);
-  padding: 2px 7px;
-  border-radius: 4px;
-  max-width: 180px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: middle;
+
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  background: rgba(36, 91, 174, 0.08);
+  color: var(--clr-primary);
+
+  font-size: 0.72rem;
+  font-family: Consolas, monospace;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2332,4 +2226,4 @@ html, body {
 }
 
 
-
+

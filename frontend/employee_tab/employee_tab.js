@@ -146,10 +146,10 @@
     maritalstatus: "Marital Status",
   };
 
+
   /* ═══ Init ══════════════════════════════════════════════ */
 
   function init() {
-    if (window._empTabInitialized) return;
     window._empTabInitialized = true;
     
     fetchEmployeeData();
@@ -1665,12 +1665,14 @@ function _buildInlineCertCard(records, empNumber) {
       </div>`;
   } else {
     const chips = records.map(r => {
-      const name      = r.certificateName || r.certificate_name || "";
-      const issuer    = r.issuer          || r.issuing_org      || "";
-      const type      = r.certType        || r.cert_type        || "";
-      const issueDate = r.issueDate       || r.issue_date       || "";
-      const expiry    = r.expiryDate      || r.expiry_date      || "";
-      const url       = r.credentialUrl   || r.credential_url   || "";
+      const name       = r.certificateName || r.certificate_name || r.Certification_name || "";
+      const issuer     = r.issuer          || r.issuing_org      || r.Issuer || "";
+      const type       = r.certType        || r.cert_type        || r.Type || "";
+      const technology = r.technology      || r.Technology      || "";
+      const amount     = r.amountInRs      || r.Amount_in_Rs    || "";
+      const issueDate  = r.issueDate       || r.issue_date       || r.Completion_Date || "";
+      const expiry     = r.expiryDate      || r.expiry_date      || r.Date_of_Expiry || "";
+      const url        = r.credentialUrl   || r.credential_url   || "";
 
       // Expiry indicator
       let expiryDot = "";
@@ -1697,6 +1699,8 @@ function _buildInlineCertCard(records, empNumber) {
           ${expiryDot}
           ${nameEl}
           ${typeBadge}
+          ${technology ? `<span class="cert-chip-tech"><i class="bi bi-laptop"></i> ${_esc(technology)}</span>` : ""}
+          ${amount ? `<span class="cert-chip-amount">₹${_esc(amount)}</span>` : ""}
           ${issuer ? `<span class="cert-chip-issuer"><i class="bi bi-building"></i> ${_esc(issuer)}</span>` : ""}
           ${issueDateFmt ? `<span class="cert-chip-date"><i class="bi bi-calendar-event"></i> ${issueDateFmt}</span>` : ""}
         </div>`;
@@ -1720,11 +1724,12 @@ function _buildInlineCertCard(records, empNumber) {
 
 window.openCertModal = function() {
   // Reset fields
-  ["certName","certIssuer","certUrl","certDescription"].forEach(id => {
+  ["certName","certIssuer","certUrl","certDescription","certTechnology","certAmount"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
   document.getElementById("certType").value      = "Self";
+  document.getElementById("certTechnology").value = "";
   document.getElementById("certIssueDate").value  = "";
   document.getElementById("certExpiryDate").value = "";
   document.getElementById("empCertModalError").style.display = "none";
@@ -1737,13 +1742,15 @@ window.closeCertModal = function() {
 };
 
 window.submitCertModal = async function() {
-  const name      = (document.getElementById("certName").value       || "").trim();
-  const issuer    = (document.getElementById("certIssuer").value     || "").trim();
-  const type      = (document.getElementById("certType").value       || "").trim();
-  const issueDate = (document.getElementById("certIssueDate").value  || "").trim();
-  const expiry    = (document.getElementById("certExpiryDate").value || "").trim();
-  const url       = (document.getElementById("certUrl").value        || "").trim();
-  const desc      = (document.getElementById("certDescription").value || "").trim();
+  const name       = (document.getElementById("certName").value       || "").trim();
+  const issuer     = (document.getElementById("certIssuer").value     || "").trim();
+  const type       = (document.getElementById("certType").value       || "").trim();
+  const technology = (document.getElementById("certTechnology").value || "").trim();
+  const amount     = (document.getElementById("certAmount").value     || "").trim();
+  const issueDate  = (document.getElementById("certIssueDate").value  || "").trim();
+  const expiry     = (document.getElementById("certExpiryDate").value || "").trim();
+  const url        = (document.getElementById("certUrl").value        || "").trim();
+  const desc       = (document.getElementById("certDescription").value || "").trim();
 
   const errorEl  = document.getElementById("empCertModalError");
   const errorMsg = document.getElementById("empCertModalErrorMsg");
@@ -1769,9 +1776,12 @@ window.submitCertModal = async function() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         employeeNumber: empNumber,
+        employeeName: emp.displayName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim(),
         certificateName: name,
         issuer,
         certType: type,
+        technology,
+        amountInRs: amount,
         issueDate,
         expiryDate: expiry,
         credentialUrl: url,

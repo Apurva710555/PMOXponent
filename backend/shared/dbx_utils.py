@@ -1022,3 +1022,104 @@ def merge_timeentries(table_name, data):
         import traceback
         traceback.print_exc()
         raise
+
+def merge_to_dbx_table(table_name, data, merge_keys):
+    """
+    Upserts (MERGE) entries into Databricks using a temporary staging table to 
+    prevent full truncation. Matches on the provided merge_keys.
+    """
+    catalog = os.getenv("CATALOG_NAME")
+    schema = os.getenv("SCHEMA_NAME")
+    
+    if not all([catalog, schema, table_name]):
+        raise ValueError("Missing database configuration.")
+        
+    full_table = f"`{catalog}`.`{schema}`.`{table_name}`"
+    staging_table = f"`{catalog}`.`{schema}`.`{table_name}_staging`"
+    
+    if not data:
+        print(f"[INFO] No data to merge for {table_name}.")
+        return
+        
+    # Deduplicate data based on merge_keys to avoid Databricks MERGE errors
+    unique_data = {}
+    for row in data:
+        # Create a tuple of the values of the merge_keys to use as a deduplication key
+        key = tuple(str(row.get(k, "")) for k in merge_keys)
+        unique_data[key] = row
+            
+    deduped_data = list(unique_data.values())
+    if not deduped_data:
+        print(f"[INFO] No valid data to merge for {table_name}.")
+        return
+        
+    cols_list = list(deduped_data[0].keys())
+    
+    def clean_val(v):
+        if isinstance(v, (dict, list)):
+            return json.dumps(v)
+        return str(v) if v is not None else None
+        
+    try:
+        with get_dbx_connection() as conn:
+            with conn.cursor() as cursor:
+                # Ensure target table exists
+                col_defs = ", ".join([f"`{c}` STRING" for c in cols_list])
+                cursor.execute(f"CREATE TABLE IF NOT EXISTS {full_table} ({col_defs})")
+                
+                # Drop and recreate empty staging table
+                cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                cursor.execute(f"CREATE TABLE {staging_table} LIKE {full_table}")
+                
+                # Bulk insert into staging using large batch size
+                BATCH_SIZE = 500
+                columns_str = ", ".join([f"`{c}`" for c in cols_list])
+                total = len(deduped_data)
+                
+                print(f"[INFO] Merging {total} records via staging table into {full_table}...")
+                
+                for i in range(0, total, BATCH_SIZE):
+                    batch = deduped_data[i:i+BATCH_SIZE]
+                    parts = []
+                    for row in batch:
+                        row_parts = []
+                        for col in cols_list:
+                            v = clean_val(row.get(col))
+                            if v is None:
+                                row_parts.append("NULL")
+                            else:
+                                escaped = v.replace("\\", "\\\\").replace("'", "\\'")
+                                row_parts.append(f"'{escaped}'")
+                        parts.append(f"({', '.join(row_parts)})")
+                        
+                    values_str = ", ".join(parts)
+                    cursor.execute(f"INSERT INTO {staging_table} ({columns_str}) VALUES {values_str}")
+                    
+                # Build the ON clause for the MERGE
+                on_clause = " AND ".join([f"target.`{k}` = source.`{k}`" for k in merge_keys])
+                
+                # Perform the MERGE INTO the permanent target table
+                merge_sql = f"""
+                MERGE INTO {full_table} target
+                USING {staging_table} source
+                ON {on_clause}
+                WHEN MATCHED THEN
+                  UPDATE SET *
+                WHEN NOT MATCHED THEN
+                  INSERT *
+                """
+                cursor.execute(merge_sql)
+                
+                # Clean up staging table
+                cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                
+            if hasattr(conn, "commit"):
+                conn.commit()
+                
+        print(f"[INFO] Successfully merged data into {full_table}.")
+        
+    except Exception as e:
+        print(f"[ERROR] merge_to_dbx_table failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise

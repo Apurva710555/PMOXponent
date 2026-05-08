@@ -451,7 +451,7 @@ def get_employee_certifications():
     if not employee_number:
         return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
 
-    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certifications").strip()
+    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certification").strip()
     catalog    = os.getenv("CATALOG_NAME", "").strip()
     schema     = os.getenv("SCHEMA_NAME",  "").strip()
 
@@ -464,11 +464,36 @@ def get_employee_certifications():
     safe_emp_number = employee_number.replace("'", "''")
 
     try:
-        sql = (
-            f"SELECT * FROM `{catalog}`.`{schema}`.`{cert_table}` "
-            f"WHERE employeeNumber = '{safe_emp_number}' "
-            f"ORDER BY issueDate DESC"
-        )
+        from backend.shared.dbx_utils import get_dbx_connection
+
+        def _table_columns(table_name):
+            with get_dbx_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(f"DESCRIBE TABLE `{catalog}`.`{schema}`.`{table_name}`")
+                    return [row[0] for row in cursor.fetchall()]
+
+        cols = _table_columns(cert_table)
+        if "E_Code" in cols:
+            id_column = "E_Code"
+        elif "employeeNumber" in cols:
+            id_column = "employeeNumber"
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Certification table missing employee identifier column (expected E_Code or employeeNumber)."
+            }), 500
+
+        # Order using available date field if present
+        order_column = None
+        for candidate in ["issueDate", "Completion_Date", "Date_of_Expiry"]:
+            if candidate in cols:
+                order_column = candidate
+                break
+
+        sql = f"SELECT * FROM `{catalog}`.`{schema}`.`{cert_table}` WHERE {id_column} = '{safe_emp_number}'"
+        if order_column:
+            sql += f" ORDER BY {order_column} DESC"
+
         rows = execute_query(sql) or []
         return jsonify({"status": "success", "data": rows})
 
@@ -492,13 +517,14 @@ def add_employee_certification():
         employeeNumber  — human-readable employee ID
         certificateName — name of the certificate (required)
         issuer          — issuing organisation (required)
-        certType        — Self | Company | External
+        certType        — Self | Free | N/A
         issueDate       — YYYY-MM-DD (required)
         expiryDate      — YYYY-MM-DD (optional)
         credentialUrl   — URL (optional)
         description     — text (optional)
     """
-    import datetime, uuid
+    import datetime
+    import uuid
 
     body = request.get_json(force=True, silent=True) or {}
 
@@ -506,6 +532,8 @@ def add_employee_certification():
     certificate_name = str(body.get('certificateName', '')).strip()
     issuer           = str(body.get('issuer',          '')).strip()
     cert_type        = str(body.get('certType',        'Self')).strip()
+    technology       = str(body.get('technology',      '')).strip()
+    amount           = str(body.get('amountInRs',      '') or body.get('Amount_in_Rs', '')).strip()
     issue_date       = str(body.get('issueDate',       '')).strip()
     expiry_date      = str(body.get('expiryDate',      '')).strip()
     credential_url   = str(body.get('credentialUrl',   '')).strip()
@@ -521,7 +549,7 @@ def add_employee_certification():
     if not issue_date:
         return jsonify({"status": "error", "message": "Missing: issueDate"}), 400
 
-    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certifications").strip()
+    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certification").strip()
     catalog    = os.getenv("CATALOG_NAME", "").strip()
     schema     = os.getenv("SCHEMA_NAME",  "").strip()
 
@@ -534,6 +562,7 @@ def add_employee_certification():
     full_table = f"`{catalog}`.`{schema}`.`{cert_table}`"
     now_ts     = datetime.datetime.utcnow().isoformat()
     record_id  = str(uuid.uuid4())
+    employee_name = str(body.get('employeeName', '')).strip()
 
     def _esc(v):
         if v is None or v == '':
@@ -542,38 +571,33 @@ def add_employee_certification():
 
     create_sql = f"""
         CREATE TABLE IF NOT EXISTS {full_table} (
-            id          STRING,
+            id             STRING,
             employeeNumber STRING,
+            E_Code         STRING,
+            E_Name         STRING,
             certificateName STRING,
-            issuer      STRING,
-            certType    STRING,
-            issueDate   STRING,
-            expiryDate  STRING,
-            credentialUrl STRING,
-            description STRING,
-            addedAt     STRING,
-            addedBy     STRING
+            Certification_name STRING,
+            issuer         STRING,
+            certType       STRING,
+            Type           STRING,
+            Technology     STRING,
+            issueDate      STRING,
+            Completion_Date STRING,
+            expiryDate     STRING,
+            Date_of_Expiry STRING,
+            Amount_in_Rs   STRING,
+            credentialUrl  STRING,
+            credential_url STRING,
+            description    STRING,
+            Note           STRING,
+            addedAt        STRING,
+            addedBy        STRING
         )
     """
 
-    insert_sql = f"""
-        INSERT INTO {full_table}
-            (id, employeeNumber, certificateName, issuer, certType,
-             issueDate, expiryDate, credentialUrl, description, addedAt, addedBy)
-        VALUES (
-            {_esc(record_id)},
-            {_esc(employee_number)},
-            {_esc(certificate_name)},
-            {_esc(issuer)},
-            {_esc(cert_type)},
-            {_esc(issue_date)},
-            {_esc(expiry_date) if expiry_date else 'NULL'},
-            {_esc(credential_url) if credential_url else 'NULL'},
-            {_esc(description) if description else 'NULL'},
-            {_esc(now_ts)},
-            {_esc('PMO')}
-        )
-    """
+    def _describe_columns(cursor):
+        cursor.execute(f"DESCRIBE TABLE `{catalog}`.`{schema}`.`{cert_table}`")
+        return [row[0] for row in cursor.fetchall()]
 
     try:
         from backend.shared.dbx_utils import get_dbx_connection, invalidate_dbx_cache
@@ -581,6 +605,56 @@ def add_employee_certification():
             with conn.cursor() as cursor:
                 print(f"[INFO] Ensuring certifications table exists: {full_table}")
                 cursor.execute(create_sql)
+
+                try:
+                    cols = _describe_columns(cursor)
+                except Exception:
+                    cols = []
+
+                if not cols:
+                    cols = _describe_columns(cursor)
+
+                insert_columns = []
+                insert_values = []
+
+                def add_col(col_name, value):
+                    if col_name in cols:
+                        insert_columns.append(col_name)
+                        insert_values.append(_esc(value) if value not in (None, "") else 'NULL')
+
+                add_col('id', record_id)
+                add_col('employeeNumber', employee_number)
+                add_col('E_Code', employee_number)
+                add_col('E_Name', employee_name)
+                add_col('certificateName', certificate_name)
+                add_col('Certification_name', certificate_name)
+                add_col('issuer', issuer)
+                add_col('certType', cert_type)
+                add_col('Type', cert_type)
+                add_col('Technology', technology)
+                add_col('issueDate', issue_date)
+                add_col('Completion_Date', issue_date)
+                add_col('expiryDate', expiry_date)
+                add_col('Date_of_Expiry', expiry_date)
+                add_col('Amount_in_Rs', amount)
+                add_col('credentialUrl', credential_url)
+                add_col('credential_url', credential_url)
+                add_col('description', description)
+                add_col('Note', description)
+                add_col('addedAt', now_ts)
+                add_col('addedBy', 'PMO')
+
+                if not insert_columns:
+                    raise Exception("No compatible certification columns found for insert.")
+
+                insert_sql = f"""
+                    INSERT INTO {full_table}
+                        ({', '.join(insert_columns)})
+                    VALUES (
+                        {', '.join(insert_values)}
+                    )
+                """
+
                 print(f"[INFO] Inserting certification for employee {employee_number}: {certificate_name}")
                 cursor.execute(insert_sql)
             if hasattr(conn, 'commit'):
@@ -597,6 +671,7 @@ def add_employee_certification():
 
     except Exception as e:
         print(f"[ERROR] add_employee_certification failed: {e}")
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 

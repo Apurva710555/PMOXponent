@@ -49,6 +49,7 @@
           <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
             <a class="nav-link sidebar-sub-link active" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Overview</a>
             <a class="nav-link sidebar-sub-link" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Timesheet Compliance</a>
+            <a class="nav-link sidebar-sub-link" id="report-weekly-timesheet-link" data-bs-toggle="tab" href="#report-weekly-timesheet" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Weekly Timesheet - PMO</a>
             <a class="nav-link sidebar-sub-link" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Talent Pool Overview</a>
             <a class="nav-link sidebar-sub-link" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Blocked Resource</a>
             <a class="nav-link sidebar-sub-link" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Future Pool</a>
@@ -196,20 +197,50 @@
       setTimeout(() => { toast.style.display = 'none'; }, 6000);
     }
 
-    // Lazy-load dashboard iframes
-    document.addEventListener("DOMContentLoaded", () => {
-      const dashboardLinks = document.querySelectorAll('.sidebar-sub-link');
-      dashboardLinks.forEach(link => {
-        link.addEventListener('shown.bs.tab', (e) => {
-          const targetId = e.target.getAttribute('href').substring(1);
-          const panel = document.getElementById(targetId);
-          if (panel) {
-            const iframe = panel.querySelector('iframe');
-            if (iframe && iframe.getAttribute('data-src')) {
-              iframe.setAttribute('src', iframe.getAttribute('data-src'));
-              iframe.removeAttribute('data-src');
-            }
-          }
+    // ── PRELOAD ALL IFRAMES + VISIBILITY-BASED TAB SWITCHING ────────
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // ── 1. PRELOAD ALL IFRAMES IMMEDIATELY ──────────────────────────
+      // Instead of waiting for tab click, set src on all iframes right away
+      document.querySelectorAll('#reportSubTabsContent iframe[data-src]').forEach(iframe => {
+        iframe.src = iframe.getAttribute('data-src');
+        iframe.removeAttribute('data-src');
+      });
+
+      // ── 2. PREVENT RE-RENDERS ON TAB SWITCH ─────────────────────────
+      // Bootstrap hides inactive tab-panes with display:none, which causes
+      // iframes to reload. Override this: use visibility+opacity instead.
+      const style = document.createElement('style');
+      style.textContent = `
+        #reportSubTabsContent .tab-pane {
+          display: block !important;      /* always in DOM */
+          visibility: hidden;
+          opacity: 0;
+          height: 0;
+          overflow: hidden;
+          pointer-events: none;
+          transition: opacity 0.15s ease;
+        }
+        #reportSubTabsContent .tab-pane.active {
+          visibility: visible;
+          opacity: 1;
+          height: auto;
+          overflow: visible;
+          pointer-events: auto;
+        }
+      `;
+      document.head.appendChild(style);
+
+      // ── 3. HANDLE TAB CLICKS ─────────────────────────────────────────
+      // Listen for Bootstrap tab shown event to swap the active class
+      document.querySelectorAll('[data-bs-toggle="tab"]').forEach(trigger => {
+        trigger.addEventListener('shown.bs.tab', (e) => {
+          const targetId = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+          document.querySelectorAll('#reportSubTabsContent .tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+          });
+          const activePane = document.querySelector(targetId);
+          if (activePane) activePane.classList.add('active');
         });
       });
     });
