@@ -1112,10 +1112,19 @@ function _showEmployee(idx) {
           Loading skills...
         </div>
       </div>
+
+      <!-- Certifications injected async -->
+      <div id="empProfileCertsBlock">
+        <div class="skill-inline-loading">
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          Loading certifications...
+        </div>
+      </div>
     `;
 
     panel.innerHTML = html;
     _injectProfileSkills(empNumber);
+    _injectProfileCertifications(empNumber);
   }
 
 
@@ -1599,4 +1608,206 @@ function _skillProficiencyClass(raw) {
   if (label === "expert"      || num === 4) return "skill-badge-expert";
   return "skill-badge-default";
 }
+
+/* ═══ Certifications (inline in Profile) ════════════════════════ */
+
+async function _injectProfileCertifications(empNumber) {
+  const block = document.getElementById("empProfileCertsBlock");
+  if (!block || !empNumber) return;
+
+  try {
+    const res    = await fetch(`/api/employee/certifications?employeeId=${encodeURIComponent(empNumber)}`);
+    const result = await res.json();
+
+    if (result.status === "success" && result.data && result.data.length > 0) {
+      block.innerHTML = _buildInlineCertCard(result.data, empNumber);
+    } else if (result.status === "success") {
+      block.innerHTML = _buildInlineCertCard([], empNumber);
+    } else {
+      block.innerHTML = `
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <i class="bi bi-patch-check-fill"></i> Certifications
+          </div>
+          <div style="padding:16px;color:#dc3545;font-size:0.82rem;">
+            <i class="bi bi-exclamation-triangle"></i>
+            Could not load certifications: ${_esc(result.message || "Unknown error")}
+          </div>
+        </div>`;
+    }
+  } catch (err) {
+    block.innerHTML = `
+      <div class="detail-card">
+        <div class="detail-card-header"><i class="bi bi-patch-check-fill"></i> Certifications</div>
+        <div style="padding:16px;color:#dc3545;font-size:0.82rem;">
+          <i class="bi bi-wifi-off"></i> Certifications fetch error: ${_esc(err.message)}
+        </div>
+      </div>`;
+  }
+}
+
+function _buildInlineCertCard(records, empNumber) {
+  const countChip = records.length > 0
+    ? `<span class="skill-count-chip" style="margin-left:auto">${records.length} certificate${records.length !== 1 ? "s" : ""}</span>`
+    : '';
+
+  const addBtn = `
+    <button class="cert-inline-add-btn" onclick="openCertModal()" title="Add Certificate">
+      <i class="bi bi-plus-lg"></i> Add
+    </button>`;
+
+  let bodyHTML;
+  if (records.length === 0) {
+    bodyHTML = `
+      <div class="cert-inline-empty">
+        <i class="bi bi-patch-check"></i>
+        <span>No certifications recorded. Click <strong>+ Add</strong> to add one.</span>
+      </div>`;
+  } else {
+    const chips = records.map(r => {
+      const name      = r.certificateName || r.certificate_name || "";
+      const issuer    = r.issuer          || r.issuing_org      || "";
+      const type      = r.certType        || r.cert_type        || "";
+      const issueDate = r.issueDate       || r.issue_date       || "";
+      const expiry    = r.expiryDate      || r.expiry_date      || "";
+      const url       = r.credentialUrl   || r.credential_url   || "";
+
+      // Expiry indicator
+      let expiryDot = "";
+      if (expiry) {
+        const diffDays = Math.ceil((new Date(expiry) - new Date()) / 86400000);
+        if      (diffDays < 0)   expiryDot = `<span class="cert-dot cert-dot-expired" title="Expired"></span>`;
+        else if (diffDays <= 90) expiryDot = `<span class="cert-dot cert-dot-expiring" title="Expiring soon"></span>`;
+        else                     expiryDot = `<span class="cert-dot cert-dot-valid" title="Valid"></span>`;
+      }
+
+      const typeClass = type ? `cert-type-${_slugify(type)}` : "";
+      const typeBadge = type
+        ? `<span class="cert-type-badge ${typeClass}">${_esc(type)}</span>`
+        : "";
+
+      const nameEl = url
+        ? `<a href="${_esc(url)}" target="_blank" class="cert-chip-name cert-name-link">${_esc(name)}</a>`
+        : `<span class="cert-chip-name">${_esc(name)}</span>`;
+
+      const issueDateFmt = issueDate ? _formatDateCompact(issueDate) : "";
+
+      return `
+        <div class="cert-inline-chip">
+          ${expiryDot}
+          ${nameEl}
+          ${typeBadge}
+          ${issuer ? `<span class="cert-chip-issuer"><i class="bi bi-building"></i> ${_esc(issuer)}</span>` : ""}
+          ${issueDateFmt ? `<span class="cert-chip-date"><i class="bi bi-calendar-event"></i> ${issueDateFmt}</span>` : ""}
+        </div>`;
+    }).join("");
+
+    bodyHTML = `<div class="cert-inline-chips-wrap">${chips}</div>`;
+  }
+
+  return `
+    <div class="detail-card">
+      <div class="detail-card-header">
+        <i class="bi bi-patch-check-fill"></i> Certifications
+        ${countChip}
+        ${addBtn}
+      </div>
+      <div class="cert-inline-body">${bodyHTML}</div>
+    </div>`;
+}
+
+/* ── Cert Modal open / close ─────────────────────────── */
+
+window.openCertModal = function() {
+  // Reset fields
+  ["certName","certIssuer","certUrl","certDescription"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("certType").value      = "Self";
+  document.getElementById("certIssueDate").value  = "";
+  document.getElementById("certExpiryDate").value = "";
+  document.getElementById("empCertModalError").style.display = "none";
+  document.getElementById("empCertModalOverlay").style.display = "flex";
+  setTimeout(() => document.getElementById("certName").focus(), 50);
+};
+
+window.closeCertModal = function() {
+  document.getElementById("empCertModalOverlay").style.display = "none";
+};
+
+window.submitCertModal = async function() {
+  const name      = (document.getElementById("certName").value       || "").trim();
+  const issuer    = (document.getElementById("certIssuer").value     || "").trim();
+  const type      = (document.getElementById("certType").value       || "").trim();
+  const issueDate = (document.getElementById("certIssueDate").value  || "").trim();
+  const expiry    = (document.getElementById("certExpiryDate").value || "").trim();
+  const url       = (document.getElementById("certUrl").value        || "").trim();
+  const desc      = (document.getElementById("certDescription").value || "").trim();
+
+  const errorEl  = document.getElementById("empCertModalError");
+  const errorMsg = document.getElementById("empCertModalErrorMsg");
+
+  if (!name || !issuer || !issueDate) {
+    errorMsg.textContent = "Certificate Name, Issuing Organisation, and Issue Date are required.";
+    errorEl.style.display = "flex";
+    return;
+  }
+
+  const emp = _empData[_currentEmpIdx];
+  if (!emp) return;
+  const empNumber = emp.employeeNumber || emp.employee_code || "";
+
+  const submitBtn = document.getElementById("empCertSubmitBtn");
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<div class="spinner-border spinner-border-sm" role="status"></div> Saving…`;
+  errorEl.style.display = "none";
+
+  try {
+    const res = await fetch("/api/employee/certifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeNumber: empNumber,
+        certificateName: name,
+        issuer,
+        certType: type,
+        issueDate,
+        expiryDate: expiry,
+        credentialUrl: url,
+        description: desc
+      })
+    });
+    const result = await res.json();
+
+    if (result.status === "success") {
+      closeCertModal();
+      if (typeof _showToast === "function") {
+        _showToast("Certificate saved successfully!", "success");
+      }
+      // Refresh inline block in the profile panel
+      _injectProfileCertifications(empNumber);
+    } else {
+      errorMsg.textContent = result.message || "Failed to save certificate. Please try again.";
+      errorEl.style.display = "flex";
+    }
+  } catch (err) {
+    errorMsg.textContent = `Network error: ${err.message}`;
+    errorEl.style.display = "flex";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<i class="bi bi-patch-check"></i> Save Certificate`;
+  }
+};
+
+// Close cert modal on backdrop click
+(function() {
+  const overlay = document.getElementById("empCertModalOverlay");
+  if (overlay) {
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) closeCertModal();
+    });
+  }
+})();
+
 })();

@@ -87,6 +87,7 @@
   <!-- ── Panel 3: History ──────────────────────────────────── -->
   <div class="detail-scroll-area emp-sub-panel" id="empHistoryPanel" style="display:none">
 
+
     <!-- ── Box 1: Status History ──────────────────────────── -->
     <div class="hist-section-box">
       <div class="hist-section-header">
@@ -117,6 +118,64 @@
 
   </div>
 
+</div>
+
+<!-- ── Add Certificate Modal ────────────────────────────────── -->
+<div id="empCertModalOverlay" class="status-modal-overlay" style="display:none">
+  <div class="status-modal-box cert-modal-box">
+    <div class="status-modal-header">
+      <i class="bi bi-patch-check-fill"></i>
+      <span>Add Certificate</span>
+    </div>
+    <div class="status-modal-body cert-modal-body">
+
+      <div class="cert-form-grid">
+        <div class="cert-form-field">
+          <label for="certName">Certificate Name <span class="req-star">*</span></label>
+          <input type="text" id="certName" class="cert-form-input" placeholder="e.g. AWS Solutions Architect">
+        </div>
+        <div class="cert-form-field">
+          <label for="certIssuer">Issuing Organisation <span class="req-star">*</span></label>
+          <input type="text" id="certIssuer" class="cert-form-input" placeholder="e.g. Amazon Web Services">
+        </div>
+        <div class="cert-form-field">
+          <label for="certType">Type</label>
+          <select id="certType" class="cert-form-input">
+            <option value="Self">Self</option>
+            <option value="Company">Company</option>
+            <option value="External">External</option>
+          </select>
+        </div>
+        <div class="cert-form-field">
+          <label for="certIssueDate">Issue Date <span class="req-star">*</span></label>
+          <input type="date" id="certIssueDate" class="cert-form-input">
+        </div>
+        <div class="cert-form-field">
+          <label for="certExpiryDate">Expiry Date <span style="font-size:0.72rem;color:#6c757d;">(optional)</span></label>
+          <input type="date" id="certExpiryDate" class="cert-form-input">
+        </div>
+        <div class="cert-form-field cert-form-field-full">
+          <label for="certUrl">Credential URL <span style="font-size:0.72rem;color:#6c757d;">(optional)</span></label>
+          <input type="url" id="certUrl" class="cert-form-input" placeholder="https://...">
+        </div>
+        <div class="cert-form-field cert-form-field-full">
+          <label for="certDescription">Description <span style="font-size:0.72rem;color:#6c757d;">(optional)</span></label>
+          <textarea id="certDescription" class="cert-form-input" rows="2" placeholder="Brief description of the certification..."></textarea>
+        </div>
+      </div>
+
+      <div id="empCertModalError" class="status-modal-error" style="display:none">
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span id="empCertModalErrorMsg">Please fill in all required fields.</span>
+      </div>
+    </div>
+    <div class="status-modal-footer">
+      <button class="status-btn-cancel" id="empCertCancelBtn" onclick="closeCertModal()">Cancel</button>
+      <button class="status-btn-submit" id="empCertSubmitBtn" onclick="submitCertModal()">
+        <i class="bi bi-patch-check"></i> Save Certificate
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- ── Status Comment Modal ─────────────────────────────────── -->

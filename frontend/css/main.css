@@ -2045,4 +2045,291 @@ html, body {
 @media (max-width: 768px) {
   .flat-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Certifications Sub-Tab
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Toolbar ─────────────────────────────────────────── */
+.cert-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px var(--sp-lg);
+  background: var(--clr-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--sp-lg);
+}
+
+.cert-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--clr-primary);
+  font-size: 1.05rem;
+}
+
+.cert-count-chip {
+  background: rgba(36, 91, 174, 0.10);
+  color: var(--clr-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.2px;
+}
+
+.cert-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-hover));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(36, 91, 174, 0.28);
+  white-space: nowrap;
+}
+
+.cert-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(36, 91, 174, 0.42);
+}
+
+.cert-add-btn:active { transform: translateY(0); }
+
+/* ── Table cells ─────────────────────────────────────── */
+.cert-table td { vertical-align: middle; padding: 12px 14px; }
+.cert-td-name  { min-width: 180px; }
+
+.cert-name-link {
+  color: var(--clr-primary);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s;
+}
+.cert-name-link:hover { color: var(--clr-primary-dk); text-decoration: underline; }
+
+.cert-desc-text {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cert-issuer-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+}
+
+.cert-date-text {
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.cert-meta-text  { display: block; font-size: 0.78rem; color: var(--clr-text); font-weight: 500; }
+.cert-meta-date  { display: block; font-size: 0.72rem; color: var(--clr-text-muted); margin-top: 2px; }
+
+/* ── Type badges ─────────────────────────────────────── */
+.cert-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.cert-type-self     { background: rgba(23,162,184,0.12); color: var(--clr-info); }
+.cert-type-company  { background: rgba(36,91,174,0.12);  color: var(--clr-primary); }
+.cert-type-external { background: rgba(240,173,78,0.14); color: #c87a0a; }
+
+/* ── Add Certificate Modal ───────────────────────────── */
+.cert-modal-box  { width: 580px !important; max-width: 96vw !important; }
+.cert-modal-body { padding: var(--sp-lg) !important; }
+
+.cert-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-md);
+}
+
+.cert-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cert-form-field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cert-form-field-full { grid-column: 1 / -1; }
+
+.cert-form-input {
+  padding: 9px 12px;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--clr-text);
+  background: var(--clr-bg);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  resize: vertical;
+}
+
+.cert-form-input:focus {
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 0 2px rgba(36,91,174,0.12);
+  background: #fff;
+}
+
+.cert-form-input::placeholder { color: var(--clr-text-muted); font-size: 0.82rem; }
+
+.req-star { color: var(--clr-danger); font-weight: 700; }
+
+@media (max-width: 600px) {
+  .cert-form-grid { grid-template-columns: 1fr; }
+  .cert-form-field-full { grid-column: 1; }
+}
+
+/* ── Inline Certification Card (Profile panel) ───────── */
+
+/* Body wrapper inside the detail-card */
+.cert-inline-body {
+  padding: 14px var(--sp-lg);
+}
+
+/* Chips container — wraps like skill chips */
+.cert-inline-chips-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Single certificate chip row */
+.cert-inline-chip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  transition: box-shadow 0.15s;
+}
+
+.cert-inline-chip:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* Small coloured dot indicating expiry status */
+.cert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cert-dot-valid    { background: var(--clr-success); }
+.cert-dot-expiring { background: var(--clr-warning); }
+.cert-dot-expired  { background: var(--clr-danger); }
+
+/* Certificate name */
+.cert-chip-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+/* Issuer text */
+.cert-chip-issuer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+}
+
+/* Issue date */
+.cert-chip-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  margin-left: auto;
+}
+
+/* + Add button inside the card header */
+.cert-inline-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 5px 14px;
+  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-hover));
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(36, 91, 174, 0.25);
+  white-space: nowrap;
+}
+
+.cert-inline-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(36, 91, 174, 0.4);
+}
+
+.cert-inline-add-btn:active { transform: translateY(0); }
+
+/* Empty state inside the inline card */
+.cert-inline-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--clr-text-muted);
+  font-size: 0.83rem;
+  padding: 4px 0;
+}
+
+.cert-inline-empty i {
+  font-size: 1.3rem;
+  opacity: 0.45;
+}
+
+
 

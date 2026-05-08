@@ -435,3 +435,168 @@ def get_employee_skills():
         if "TABLE_OR_VIEW_NOT_FOUND" in error_str or "does not exist" in error_str.lower():
             return jsonify({"status": "success", "data": []})
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ── Route 7: Get certifications for an employee ───────────────────────────────
+
+@employee_bp.route('/api/employee/certifications', methods=['GET'])
+def get_employee_certifications():
+    """
+    Returns all certifications for a given employee.
+
+    Query params:
+        employeeId — the employeeNumber (human-readable ID, e.g. 100052)
+    """
+    employee_number = request.args.get('employeeId', '').strip()
+    if not employee_number:
+        return jsonify({"status": "error", "message": "Missing required param: employeeId"}), 400
+
+    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certifications").strip()
+    catalog    = os.getenv("CATALOG_NAME", "").strip()
+    schema     = os.getenv("SCHEMA_NAME",  "").strip()
+
+    if not all([cert_table, catalog, schema]):
+        return jsonify({
+            "status": "error",
+            "message": "Server configuration missing: EMPLOYEE_CERTIFICATIONS_TABLE, CATALOG_NAME or SCHEMA_NAME not set."
+        }), 500
+
+    safe_emp_number = employee_number.replace("'", "''")
+
+    try:
+        sql = (
+            f"SELECT * FROM `{catalog}`.`{schema}`.`{cert_table}` "
+            f"WHERE employeeNumber = '{safe_emp_number}' "
+            f"ORDER BY issueDate DESC"
+        )
+        rows = execute_query(sql) or []
+        return jsonify({"status": "success", "data": rows})
+
+    except Exception as e:
+        error_str = str(e)
+        # Table doesn't exist yet — return empty list gracefully
+        if "TABLE_OR_VIEW_NOT_FOUND" in error_str or "does not exist" in error_str.lower():
+            return jsonify({"status": "success", "data": []})
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ── Route 8: Add a new certification for an employee ─────────────────────────
+
+@employee_bp.route('/api/employee/certifications', methods=['POST'])
+def add_employee_certification():
+    """
+    Inserts a new certification record for an employee.
+    Auto-creates the certifications table in Databricks if it does not exist.
+
+    Body (JSON):
+        employeeNumber  — human-readable employee ID
+        certificateName — name of the certificate (required)
+        issuer          — issuing organisation (required)
+        certType        — Self | Company | External
+        issueDate       — YYYY-MM-DD (required)
+        expiryDate      — YYYY-MM-DD (optional)
+        credentialUrl   — URL (optional)
+        description     — text (optional)
+    """
+    import datetime, uuid
+
+    body = request.get_json(force=True, silent=True) or {}
+
+    employee_number  = str(body.get('employeeNumber',  '')).strip()
+    certificate_name = str(body.get('certificateName', '')).strip()
+    issuer           = str(body.get('issuer',          '')).strip()
+    cert_type        = str(body.get('certType',        'Self')).strip()
+    issue_date       = str(body.get('issueDate',       '')).strip()
+    expiry_date      = str(body.get('expiryDate',      '')).strip()
+    credential_url   = str(body.get('credentialUrl',   '')).strip()
+    description      = str(body.get('description',     '')).strip()
+
+    # Validation
+    if not employee_number:
+        return jsonify({"status": "error", "message": "Missing: employeeNumber"}), 400
+    if not certificate_name:
+        return jsonify({"status": "error", "message": "Missing: certificateName"}), 400
+    if not issuer:
+        return jsonify({"status": "error", "message": "Missing: issuer"}), 400
+    if not issue_date:
+        return jsonify({"status": "error", "message": "Missing: issueDate"}), 400
+
+    cert_table = os.getenv("EMPLOYEE_CERTIFICATIONS_TABLE", "employee_certifications").strip()
+    catalog    = os.getenv("CATALOG_NAME", "").strip()
+    schema     = os.getenv("SCHEMA_NAME",  "").strip()
+
+    if not all([cert_table, catalog, schema]):
+        return jsonify({
+            "status": "error",
+            "message": "Server configuration missing: CATALOG_NAME or SCHEMA_NAME not set."
+        }), 500
+
+    full_table = f"`{catalog}`.`{schema}`.`{cert_table}`"
+    now_ts     = datetime.datetime.utcnow().isoformat()
+    record_id  = str(uuid.uuid4())
+
+    def _esc(v):
+        if v is None or v == '':
+            return "NULL"
+        return "'" + str(v).replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+    create_sql = f"""
+        CREATE TABLE IF NOT EXISTS {full_table} (
+            id          STRING,
+            employeeNumber STRING,
+            certificateName STRING,
+            issuer      STRING,
+            certType    STRING,
+            issueDate   STRING,
+            expiryDate  STRING,
+            credentialUrl STRING,
+            description STRING,
+            addedAt     STRING,
+            addedBy     STRING
+        )
+    """
+
+    insert_sql = f"""
+        INSERT INTO {full_table}
+            (id, employeeNumber, certificateName, issuer, certType,
+             issueDate, expiryDate, credentialUrl, description, addedAt, addedBy)
+        VALUES (
+            {_esc(record_id)},
+            {_esc(employee_number)},
+            {_esc(certificate_name)},
+            {_esc(issuer)},
+            {_esc(cert_type)},
+            {_esc(issue_date)},
+            {_esc(expiry_date) if expiry_date else 'NULL'},
+            {_esc(credential_url) if credential_url else 'NULL'},
+            {_esc(description) if description else 'NULL'},
+            {_esc(now_ts)},
+            {_esc('PMO')}
+        )
+    """
+
+    try:
+        from backend.shared.dbx_utils import get_dbx_connection, invalidate_dbx_cache
+        with get_dbx_connection() as conn:
+            with conn.cursor() as cursor:
+                print(f"[INFO] Ensuring certifications table exists: {full_table}")
+                cursor.execute(create_sql)
+                print(f"[INFO] Inserting certification for employee {employee_number}: {certificate_name}")
+                cursor.execute(insert_sql)
+            if hasattr(conn, 'commit'):
+                conn.commit()
+
+        # Bust cache so next GET reflects the new row
+        invalidate_dbx_cache()
+
+        return jsonify({
+            "status":  "success",
+            "message": f"Certificate '{certificate_name}' added for employee {employee_number}.",
+            "id":      record_id
+        })
+
+    except Exception as e:
+        print(f"[ERROR] add_employee_certification failed: {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
