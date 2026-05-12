@@ -4,7 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>PMOXponent</title>
+
   <meta name="description"
     content="PMOXponent — Comprehensive resource, project, clients and allocation management platform by Exponentia AI.">
 
@@ -15,6 +17,27 @@
   <!-- Main CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='chatbot/chatbot.css') }}">
+
+  <!-- Dashboard Loader Styles -->
+  <style>
+    .dashboard-frame-wrap {
+      position: relative;
+      min-height: 800px;
+    }
+
+    .dashboard-loader {
+      height: 800px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #6c757d;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+  </style>
+
 </head>
 
 <body>
@@ -23,67 +46,155 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
+
       <div class="sidebar-brand">
-        <i class="bi bi-grid-3x3-gap-fill me-2"></i>PMOXponent
+        <i class="bi bi-grid-3x3-gap-fill me-2"></i>
+        PMOXponent
       </div>
 
       <nav class="nav flex-column nav-pills py-2" id="sidebarTabs" role="tablist">
 
+        <!-- EMPLOYEE -->
         <a class="nav-link active" data-bs-toggle="tab" href="#employee-tab" role="tab" id="empTabLink">
-          <i class="bi bi-people-fill"></i> Employees
+
+          <i class="bi bi-people-fill"></i>
+          Employees
+
         </a>
 
+        <!-- PROJECT -->
         <a class="nav-link" data-bs-toggle="tab" href="#project-tab-pane" role="tab" id="projTabLink">
-          <i class="bi bi-folder-fill"></i> Projects
+
+          <i class="bi bi-folder-fill"></i>
+          Projects
+
         </a>
 
-        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#dashboardsSubMenu" role="button" aria-expanded="false" aria-controls="dashboardsSubMenu" id="dashboardsMenuToggle" onclick="document.getElementById('reportsTabLinkHidden').click()">
-          <span><i class="bi bi-bar-chart-fill"></i> Dashboards</span>
+        <!-- DASHBOARD MENU -->
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
+          href="#dashboardsSubMenu" role="button" aria-expanded="false" aria-controls="dashboardsSubMenu"
+          id="dashboardsMenuToggle" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+          <span>
+            <i class="bi bi-bar-chart-fill"></i>
+            Dashboards
+          </span>
+
           <i class="bi bi-chevron-down" style="font-size: 0.75rem;"></i>
+
         </a>
 
-        <!-- Hidden tab link to keep the bootstrap tab mechanism working -->
-        <a class="d-none" data-bs-toggle="tab" href="#reports-tab-pane" id="reportsTabLinkHidden"></a>
+        <!-- Hidden parent tab -->
+        <a class="d-none" data-bs-toggle="tab" href="#reports-tab-pane" id="reportsTabLinkHidden">
+        </a>
 
+        <!-- DASHBOARD SUBMENU -->
         <div class="collapse" id="dashboardsSubMenu">
+
           <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
-            <a class="nav-link sidebar-sub-link active" id="report-overview-link" data-bs-toggle="tab" href="#report-overview" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Overview</a>
-            <a class="nav-link sidebar-sub-link" id="report-timesheet-compliance-link" data-bs-toggle="tab" href="#report-timesheet-compliance" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Timesheet Compliance</a>
-            <a class="nav-link sidebar-sub-link" id="report-weekly-timesheet-link" data-bs-toggle="tab" href="#report-weekly-timesheet" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Weekly Timesheet - PMO</a>
-            <a class="nav-link sidebar-sub-link" id="report-talent-pool-link" data-bs-toggle="tab" href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Talent Pool Overview</a>
-            <a class="nav-link sidebar-sub-link" id="report-blocked-resource-link" data-bs-toggle="tab" href="#report-blocked-resource" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Blocked Resource</a>
-            <a class="nav-link sidebar-sub-link" id="report-future-pool-link" data-bs-toggle="tab" href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Future Pool</a>
-            <a class="nav-link sidebar-sub-link" id="report-resource-master-link" data-bs-toggle="tab" href="#report-resource-master" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Master</a>
-            <a class="nav-link sidebar-sub-link" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resigned Resources</a>
-            <a class="nav-link sidebar-sub-link" id="report-contract-link" data-bs-toggle="tab" href="#report-contract" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Direct Contract & 3rd P...</a>
-            <a class="nav-link sidebar-sub-link" id="report-demand-link" data-bs-toggle="tab" href="#report-demand" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Demand Tracker</a>
-            <a class="nav-link sidebar-sub-link" id="report-utilization-link" data-bs-toggle="tab" href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Resource Utilization</a>
-            <a class="nav-link sidebar-sub-link" id="report-certification-link" data-bs-toggle="tab" href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">Employee Certification</a>
+
+            <!-- TIMESHEET -->
+            <a class="nav-link sidebar-sub-link active" id="report-timesheet-compliance-link" data-bs-toggle="tab"
+              href="#report-timesheet-compliance" role="tab"
+              onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Timesheet Compliance
+
+            </a>
+
+            <!-- WEEKLY -->
+            <a class="nav-link sidebar-sub-link" id="report-weekly-timesheet-link" data-bs-toggle="tab"
+              href="#report-weekly-timesheet" role="tab"
+              onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Weekly Timesheet - PMO
+
+            </a>
+
+            <!-- TALENT -->
+            <a class="nav-link sidebar-sub-link" id="report-talent-pool-link" data-bs-toggle="tab"
+              href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Talent Pool Overview
+
+            </a>
+
+            <!-- FUTURE -->
+            <a class="nav-link sidebar-sub-link" id="report-future-pool-link" data-bs-toggle="tab"
+              href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Future Pool
+
+            </a>
+
+            <!-- RESOURCE MASTER -->
+            <a class="nav-link sidebar-sub-link" id="report-resource-master-link" data-bs-toggle="tab"
+              href="#report-resource-master" role="tab"
+              onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Resource Master
+
+            </a>
+
+            <!-- RESIGNED -->
+            <a class="nav-link sidebar-sub-link" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned"
+              role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Resigned Resources
+
+            </a>
+
+            <!-- DEMAND -->
+            <a class="nav-link sidebar-sub-link" id="report-demand-link" data-bs-toggle="tab" href="#report-demand"
+              role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Demand Tracker
+
+            </a>
+
+            <!-- UTILIZATION -->
+            <a class="nav-link sidebar-sub-link" id="report-utilization-link" data-bs-toggle="tab"
+              href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Resource Utilization
+
+            </a>
+
+            <!-- CERTIFICATION -->
+            <a class="nav-link sidebar-sub-link" id="report-certification-link" data-bs-toggle="tab"
+              href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+
+              Employee Certification
+
+            </a>
+
           </div>
+
         </div>
 
       </nav>
 
-      <!-- SYNC BUTTON — pinned to bottom of sidebar -->
-      <!-- <div class="sidebar-sync-wrap">
-        <button class="sync-btn" id="syncBtn" onclick="triggerSync()" title="Sync data from Keka">
-          <i class="bi bi-arrow-repeat" id="syncIcon"></i>
-          <span id="syncLabel">Sync Data</span>
-        </button>
-      </div> -->
+      <!-- SYNC -->
       <div class="sidebar-sync-wrap">
+
         <div class="sync-card" onclick="triggerSync()">
 
           <div class="sync-main">
+
             <span>Sync Data</span>
+
             <i class="bi bi-arrow-repeat" id="syncIcon"></i>
+
           </div>
 
           <div class="sync-time" id="lastSyncTime">
+
             Last Sync: —
+
           </div>
 
         </div>
+
       </div>
 
     </aside>
@@ -93,19 +204,34 @@
 
       <!-- HEADER -->
       <div class="app-header">
+
         <div>
-          <h2>PMOXponent — Application &amp; Resource Management</h2>
-          <div class="subtitle">Comprehensive resource, project, clients and allocation management platform.</div>
+
+          <h2>
+            PMOXponent — Application &amp; Resource Management
+          </h2>
+
+          <div class="subtitle">
+            Comprehensive resource, project, clients and allocation management platform.
+          </div>
+
         </div>
 
-        <!-- ASK PMOXponent BUTTON -->
+        <!-- CHAT BUTTON -->
         <button class="ask-pmox-btn" onclick="togglePMOXChat()">
-          <i class="bi bi-chat-dots-fill"></i> Ask PMOXponent
+
+          <i class="bi bi-chat-dots-fill"></i>
+          Ask PMOXponent
+
         </button>
+
       </div>
 
-      <!-- Toast notification -->
-      <div id="syncToast" class="sync-toast" style="display:none"></div>
+      <!-- TOAS
+      <div id="syncToast"
+           class="sync-toast"
+           style="display:none">
+      </div>
 
       <!-- TAB CONTENT -->
       <div class="tab-content tab-content-area">
@@ -116,149 +242,260 @@
 
       </div>
 
+      <!-- FOOTER -->
       <div class="app-footer">
         © 2026 PMOXponent — Exponentia AI
       </div>
 
     </div>
+
   </div>
 
   {% include 'chatbot/chatbot.html' %}
 
-  <!-- Bootstrap JS -->
+  <!-- Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Custom Scripts -->
+  <!-- Scripts -->
   <script src="{{ url_for('static', filename='employee_tab/employee_tab.js') }}"></script>
   <script src="{{ url_for('static', filename='project_tab/project_tab.js') }}"></script>
 
-  <!-- Sync & Dashboard Script -->
+  <!-- DASHBOARD OPTIMIZATION SCRIPT -->
   <script>
+
     async function triggerSync() {
+
       const card = document.querySelector('.sync-card');
       const icon = document.getElementById('syncIcon');
 
-      // 🔄 UI loading state
       card.style.opacity = "0.7";
       icon.classList.add('spin');
 
       try {
-        const res = await fetch('/api/sync', { method: 'POST' });
+
+        const res = await fetch('/api/sync', {
+          method: 'POST'
+        });
+
         const data = await res.json();
 
         _showToast(data.message || 'Sync started!', 'success');
 
-        // Poll for completion
         _startSyncPolling();
 
       } catch (err) {
+
         _showToast('Sync failed: ' + err.message, 'error');
+
         card.style.opacity = "1";
         icon.classList.remove('spin');
       }
     }
 
     function _startSyncPolling() {
+
       const interval = setInterval(async () => {
+
         try {
+
           const res = await fetch('/api/sync/status');
           const data = await res.json();
-          
+
           if (!data.running) {
+
             clearInterval(interval);
-            
-            // ✅ SAVE TIME AFTER SUCCESS
+
             const now = new Date().toLocaleString('en-IN', {
-              day: '2-digit', month: 'numeric', year: 'numeric',
-              hour: '2-digit', minute: '2-digit'
+              day: '2-digit',
+              month: 'numeric',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
             });
+
             localStorage.setItem('last_sync_time', now);
+
             updateLastSyncTime();
-            
+
             const card = document.querySelector('.sync-card');
             const icon = document.getElementById('syncIcon');
+
             card.style.opacity = "1";
             icon.classList.remove('spin');
-            
-            _showToast('Sync completed! Refreshing data...', 'success');
-            setTimeout(() => { location.reload(); }, 2000);
+
+            _showToast(
+              'Sync completed! Refreshing data...',
+              'success'
+            );
+
+            setTimeout(() => {
+              location.reload();
+            }, 2000);
           }
+
         } catch (e) {
+
           console.error("Polling error:", e);
+
         }
+
       }, 3000);
     }
 
     function _showToast(msg, type) {
+
       const toast = document.getElementById('syncToast');
+
       toast.textContent = msg;
-      toast.className = 'sync-toast ' + (type === 'error' ? 'toast-error' : 'toast-success');
+
+      toast.className =
+        'sync-toast ' +
+        (type === 'error'
+          ? 'toast-error'
+          : 'toast-success');
+
       toast.style.display = 'block';
-      setTimeout(() => { toast.style.display = 'none'; }, 6000);
+
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 6000);
     }
 
-    // ── PRELOAD ALL IFRAMES + VISIBILITY-BASED TAB SWITCHING ────────
+    // DASHBOARD LAZY LOADING
     document.addEventListener('DOMContentLoaded', () => {
 
-      // ── 1. PRELOAD ALL IFRAMES IMMEDIATELY ──────────────────────────
-      // Instead of waiting for tab click, set src on all iframes right away
-      document.querySelectorAll('#reportSubTabsContent iframe[data-src]').forEach(iframe => {
-        iframe.src = iframe.getAttribute('data-src');
-        iframe.removeAttribute('data-src');
-      });
+      const loadedTabs = new Set();
 
-      // ── 2. PREVENT RE-RENDERS ON TAB SWITCH ─────────────────────────
-      // Bootstrap hides inactive tab-panes with display:none, which causes
-      // iframes to reload. Override this: use visibility+opacity instead.
-      const style = document.createElement('style');
-      style.textContent = `
-        #reportSubTabsContent .tab-pane {
-          display: block !important;      /* always in DOM */
-          visibility: hidden;
-          opacity: 0;
-          height: 0;
-          overflow: hidden;
-          pointer-events: none;
-          transition: opacity 0.15s ease;
-        }
-        #reportSubTabsContent .tab-pane.active {
-          visibility: visible;
-          opacity: 1;
-          height: auto;
-          overflow: visible;
-          pointer-events: auto;
-        }
-      `;
-      document.head.appendChild(style);
+      const dashboardTabs = document.querySelectorAll(
+        '#dashboardsSubMenu [data-bs-toggle="tab"]'
+      );
 
-      // ── 3. HANDLE TAB CLICKS ─────────────────────────────────────────
-      // Listen for Bootstrap tab shown event to swap the active class
-      document.querySelectorAll('[data-bs-toggle="tab"]').forEach(trigger => {
+      dashboardTabs.forEach(trigger => {
+
         trigger.addEventListener('shown.bs.tab', (e) => {
-          const targetId = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
-          document.querySelectorAll('#reportSubTabsContent .tab-pane').forEach(pane => {
-            pane.classList.remove('active');
-          });
-          const activePane = document.querySelector(targetId);
-          if (activePane) activePane.classList.add('active');
+
+          const targetId =
+            e.target.getAttribute('data-bs-target') ||
+            e.target.getAttribute('href');
+
+          const activePane =
+            document.querySelector(targetId);
+
+          if (!activePane) return;
+
+          // Reset active panes
+          document
+            .querySelectorAll(
+              '#reportSubTabsContent .tab-pane'
+            )
+            .forEach(pane => {
+
+              pane.classList.remove('show', 'active');
+
+            });
+
+          activePane.classList.add('show', 'active');
+
+          // Lazy load only once
+          if (!loadedTabs.has(targetId)) {
+
+            const iframe =
+              activePane.querySelector(
+                'iframe[data-src]'
+              );
+
+            if (iframe) {
+
+              const loader =
+                activePane.querySelector(
+                  '.dashboard-loader'
+                );
+
+              iframe.src = iframe.dataset.src;
+
+              iframe.onload = () => {
+
+                iframe.style.display = 'block';
+
+                if (loader) {
+                  loader.style.display = 'none';
+                }
+
+              };
+
+              loadedTabs.add(targetId);
+            }
+          }
+
         });
+
       });
+
+      // Load first active dashboard automatically
+      const firstActive = document.querySelector(
+        '#reportSubTabsContent .tab-pane.show.active'
+      );
+
+      if (firstActive) {
+
+        const iframe =
+          firstActive.querySelector(
+            'iframe[data-src]'
+          );
+
+        if (iframe) {
+
+          iframe.src = iframe.dataset.src;
+
+          iframe.onload = () => {
+
+            iframe.style.display = 'block';
+
+            const loader =
+              firstActive.querySelector(
+                '.dashboard-loader'
+              );
+
+            if (loader) {
+              loader.style.display = 'none';
+            }
+
+          };
+
+          loadedTabs.add('#' + firstActive.id);
+        }
+      }
+
     });
+
   </script>
 
-  <!-- Ask PMOXponent Chatbot Script -->
+  <!-- CHATBOT -->
   <script src="{{ url_for('static', filename='chatbot/chatbot.js') }}"></script>
+
+  <!-- LAST SYNC -->
   <script>
+
     function updateLastSyncTime() {
-      const el = document.getElementById('lastSyncTime');
-      const last = localStorage.getItem('last_sync_time');
+
+      const el =
+        document.getElementById('lastSyncTime');
+
+      const last =
+        localStorage.getItem('last_sync_time');
 
       if (last) {
         el.textContent = "Last Sync : " + last;
       }
     }
-    document.addEventListener("DOMContentLoaded", updateLastSyncTime);
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      updateLastSyncTime
+    );
+
   </script>
+
 </body>
 
 </html>

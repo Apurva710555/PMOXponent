@@ -154,7 +154,7 @@
     
     fetchEmployeeData();
     _initTimesheetDefaults();
-    _setupStatusListeners();
+    _initStatusDropdown();
     _setupModalBackdrop();
   }
 
@@ -532,7 +532,9 @@ function _formatDateCompact(iso) {
 
 function _formatDateShort(iso) {
   try {
-    const d = new Date(iso);
+    // Extract only the date part (first 10 characters: YYYY-MM-DD)
+    const dateOnly = String(iso).substring(0, 10);
+    const d = new Date(dateOnly);
     if (isNaN(d.getTime())) return iso;
     return d.toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -1005,7 +1007,9 @@ function _showEmployee(idx) {
       const s = String(v);
       if (s.startsWith("0001-") || s.startsWith("1900-")) return "";
       try {
-        const d = new Date(s);
+        // Extract only the date part (first 10 characters: YYYY-MM-DD)
+        const dateOnly = s.substring(0, 10);
+        const d = new Date(dateOnly);
         if (!isNaN(d.getTime()) && d.getFullYear() > 1900)
           return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
       } catch {}
@@ -1214,7 +1218,9 @@ function _formatValue(key, val) {
 
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     try {
-      const d = new Date(s);
+      // Extract only the date part (first 10 characters: YYYY-MM-DD)
+      const dateOnly = s.substring(0, 10);
+      const d = new Date(dateOnly);
       if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
         return d.toLocaleDateString("en-GB", {
           day: "2-digit",

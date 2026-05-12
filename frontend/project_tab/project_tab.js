@@ -457,10 +457,12 @@ function _formatProjValue(key, val) {
     /* not JSON */
   }
 
-  // Dates
+  // Dates - extract just the date part (YYYY-MM-DD) and discard time/Z
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     try {
-      const d = new Date(s);
+      // Extract only the date part (first 10 characters: YYYY-MM-DD)
+      const dateOnly = s.substring(0, 10);
+      const d = new Date(dateOnly);
       if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
         return d.toLocaleDateString("en-GB", {
           day: "2-digit",
@@ -696,8 +698,13 @@ function _buildResourceTable(rows) {
       const cells = COLS.map((c) => {
         const val = r[c.key];
 
+        if (c.key === "startdate" || c.key === "enddate") {
+          const formatted = _formatDateShort(val);
+          return `<td class="text-center">${formatted}</td>`;
+        }
+
         // CENTER THESE
-        if (["projectName", "name", "startdate", "enddate"].includes(c.key)) {
+        if (["projectName", "name"].includes(c.key)) {
           return `<td class="text-center">${val ? _escP(String(val)) : "—"}</td>`;
         }
 

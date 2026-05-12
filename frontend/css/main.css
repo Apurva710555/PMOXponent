@@ -2225,5 +2225,22 @@ html, body {
   opacity: 0.45;
 }
 
+/* Footer Styles */
+.footer {
+  background: var(--clr-sidebar);
+  color: #fff;
+  text-align: center;
+  padding: var(--sp-md);
+  font-size: 0.85rem;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.footer-content p {
+  margin: 0;
+}
+
 
 
