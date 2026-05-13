@@ -107,7 +107,7 @@
               href="#report-weekly-timesheet" role="tab"
               onclick="document.getElementById('reportsTabLinkHidden').click()">
 
-              Weekly Timesheet - PMO
+              Weekly Timesheet
 
             </a>
 
@@ -363,6 +363,22 @@
 
     // DASHBOARD LAZY LOADING
     document.addEventListener('DOMContentLoaded', () => {
+      // Fix: clear sub-link highlights when top-level tabs are clicked
+      document.querySelectorAll('#sidebarTabs > .nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          document.querySelectorAll('.sidebar-sub-link')
+            .forEach(sl => sl.classList.remove('active'));
+        });
+      });
+
+      // Fix: clear top-level highlights when a sub-link is clicked
+      document.querySelectorAll('.sidebar-sub-link').forEach(link => {
+        link.addEventListener('click', () => {
+          document.querySelectorAll('#sidebarTabs > .nav-link')
+            .forEach(tl => tl.classList.remove('active'));
+        });
+      });
+      // Lazy-load dashboard iframes on tab change
 
       const loadedTabs = new Set();
 

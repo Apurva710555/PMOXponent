@@ -261,6 +261,218 @@ def sync_keka_data_to_dbx():
         traceback.print_exc()
         sync_errors.append("project_resources")
 
+    # ── 3b. Project Allocations (per-employee start/end dates) ───────────────
+    try:
+        import json as _alloc_json
+        from concurrent.futures import ThreadPoolExecutor as _AllocPool, as_completed as _alloc_done
+
+        alloc_table = os.getenv("KEKA_PROJECT_ALLOCATIONS_TABLE", "keka_project_allocations")
+        print("[INFO] Starting project allocations sync…")
+
+        # Reuse proj_data from Section 2 — guard if it was never assigned
+        projects_for_alloc = proj_data if "proj_data" in dir() and proj_data else []
+
+        if not projects_for_alloc:
+            print("[WARN] No project data available for allocations sync. Skipping.")
+        else:
+            all_alloc_rows = []
+            _ALLOC_DELAY  = 0.3   # seconds between calls per thread
+            _ALLOC_WORKERS = 4    # parallel threads
+
+            def _flatten_allocation(alloc, project_id):
+                """Flatten one allocation record: unwrap nested employee/billingRole/billingRate."""
+                flat = {
+                    "id":                   alloc.get("id", ""),
+                    "projectId":            project_id,
+                    "employeeId":           "",
+                    "employeeFirstName":    "",
+                    "employeeLastName":     "",
+                    "employeeEmail":        "",
+                    "startDate":            alloc.get("startDate", ""),
+                    "endDate":              alloc.get("endDate", ""),
+                    "allocationPercentage": str(alloc.get("allocationPercentage", "")),
+                    "billingRoleId":        "",
+                    "billingRoleName":      "",
+                    "billingRateUnit":      "",
+                    "billingRate":          "",
+                }
+                emp = alloc.get("employee")
+                if isinstance(emp, dict):
+                    flat["employeeId"]        = emp.get("id", "")
+                    flat["employeeFirstName"] = emp.get("firstName", "")
+                    flat["employeeLastName"]  = emp.get("lastName", "")
+                    flat["employeeEmail"]     = emp.get("email", "")
+
+                br = alloc.get("billingRole")
+                if isinstance(br, dict):
+                    flat["billingRoleId"]   = br.get("id", "")
+                    flat["billingRoleName"] = br.get("name", "")
+
+                brate = alloc.get("billingRate")
+                if isinstance(brate, dict):
+                    flat["billingRateUnit"] = str(brate.get("unit", ""))
+                    flat["billingRate"]     = str(brate.get("rate", ""))
+
+                return flat
+
+            def _fetch_project_allocations(proj):
+                """Fetch allocations for one project. Returns list of flat dicts."""
+                proj_id = str(proj.get("id", "")).strip()
+                if not proj_id:
+                    return []
+
+                alloc_url = f"{base_url}/api/v1/psa/projects/{proj_id}/allocations"
+                import time as _atime
+                _atime.sleep(_ALLOC_DELAY)
+
+                try:
+                    allocs = _fetch_all_pages(alloc_url, headers)
+                    rows = []
+                    for alloc in allocs:
+                        if isinstance(alloc, dict):
+                            rows.append(_flatten_allocation(alloc, proj_id))
+                    return rows
+                except Exception as exc:
+                    print(f"[WARN] Allocations fetch failed for project {proj_id}: {exc}")
+                    return []
+
+            total_projects = len(projects_for_alloc)
+            done = 0
+
+            with _AllocPool(max_workers=_ALLOC_WORKERS) as pool:
+                futures = {pool.submit(_fetch_project_allocations, p): p for p in projects_for_alloc}
+                for future in _alloc_done(futures):
+                    result = future.result()
+                    if result:
+                        all_alloc_rows.extend(result)
+                    done += 1
+                    if done % 20 == 0 or done == total_projects:
+                        print(f"[INFO] Allocations: {done}/{total_projects} projects processed, "
+                              f"{len(all_alloc_rows)} allocation records collected.")
+
+            print(f"[INFO] Fetched {len(all_alloc_rows)} total allocation records across {total_projects} projects.")
+
+            if all_alloc_rows:
+                merge_to_dbx_table(alloc_table, all_alloc_rows, ["projectId", "employeeId"])
+            else:
+                print("[WARN] No allocation data returned from Keka. Skipping allocations merge.")
+
+    except Exception as e:
+        print(f"[ERROR] Project allocations sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("project_allocations")
+
+    # ── 3c. Project Tasks (per-project) ────────────────────────────────────────
+    try:
+        import json as _task_json
+        from concurrent.futures import ThreadPoolExecutor as _TaskPool, as_completed as _task_done
+
+        tasks_table = os.getenv("KEKA_PROJECT_TASKS_TABLE", "keka_project_tasks")
+        print("[INFO] Starting project tasks sync…")
+
+        # Reuse proj_data from Section 2
+        projects_for_tasks = proj_data if "proj_data" in dir() and proj_data else []
+
+        if not projects_for_tasks:
+            print("[WARN] No project data available for tasks sync. Skipping.")
+        else:
+            all_task_rows = []
+            _TASK_DELAY   = 0.3   # seconds between calls per thread
+            _TASK_WORKERS = 4     # parallel threads
+
+            def _flatten_task(task, project_id):
+                """Flatten one task record: unwrap nested employee/phase/billingRole objects."""
+                flat = {
+                    "id":              task.get("id", ""),
+                    "projectId":       project_id,
+                    "name":            task.get("name", ""),
+                    "description":     task.get("description", ""),
+                    "taskType":        task.get("taskType", ""),
+                    "billingType":     task.get("billingType", ""),
+                    "status":          task.get("status", ""),
+                    "startDate":       task.get("startDate", ""),
+                    "endDate":         task.get("endDate", ""),
+                    "estimatedHours":  str(task.get("estimatedHours", "")),
+                    "actualHours":     str(task.get("actualHours", "")),
+                    "phaseId":         "",
+                    "phaseName":       "",
+                    "billingRoleId":   "",
+                    "billingRoleName": "",
+                }
+
+                # Unwrap nested phase object
+                phase = task.get("phase")
+                if isinstance(phase, dict):
+                    flat["phaseId"]   = phase.get("id", "")
+                    flat["phaseName"] = phase.get("name", "")
+
+                # Unwrap nested billingRole object
+                br = task.get("billingRole")
+                if isinstance(br, dict):
+                    flat["billingRoleId"]   = br.get("id", "")
+                    flat["billingRoleName"] = br.get("name", "")
+
+                # Flatten assigned employees as JSON array string
+                assigned = task.get("assignedEmployees") or task.get("employees") or []
+                if isinstance(assigned, (list, dict)):
+                    flat["assignedEmployees"] = _task_json.dumps(assigned)
+                else:
+                    flat["assignedEmployees"] = str(assigned) if assigned else ""
+
+                # Capture any remaining top-level scalar fields not already mapped
+                for k, v in task.items():
+                    if k not in flat and k not in ("phase", "billingRole", "assignedEmployees", "employees"):
+                        flat[k] = _task_json.dumps(v) if isinstance(v, (dict, list)) else (str(v) if v is not None else None)
+
+                return flat
+
+            def _fetch_project_tasks(proj):
+                """Fetch tasks for one project. Returns list of flat dicts."""
+                proj_id = str(proj.get("id", "")).strip()
+                if not proj_id:
+                    return []
+
+                task_url = f"{base_url}/api/v1/psa/projects/{proj_id}/tasks"
+                import time as _ttime
+                _ttime.sleep(_TASK_DELAY)
+
+                try:
+                    tasks = _fetch_all_pages(task_url, headers)
+                    rows = []
+                    for task in tasks:
+                        if isinstance(task, dict):
+                            rows.append(_flatten_task(task, proj_id))
+                    return rows
+                except Exception as exc:
+                    print(f"[WARN] Tasks fetch failed for project {proj_id}: {exc}")
+                    return []
+
+            total_projects = len(projects_for_tasks)
+            done = 0
+
+            with _TaskPool(max_workers=_TASK_WORKERS) as pool:
+                futures = {pool.submit(_fetch_project_tasks, p): p for p in projects_for_tasks}
+                for future in _task_done(futures):
+                    result = future.result()
+                    if result:
+                        all_task_rows.extend(result)
+                    done += 1
+                    if done % 20 == 0 or done == total_projects:
+                        print(f"[INFO] Tasks: {done}/{total_projects} projects processed, "
+                              f"{len(all_task_rows)} task records collected.")
+
+            print(f"[INFO] Fetched {len(all_task_rows)} total task records across {total_projects} projects.")
+
+            if all_task_rows:
+                merge_to_dbx_table(tasks_table, all_task_rows, ["projectId", "id"])
+            else:
+                print("[WARN] No task data returned from Keka. Skipping tasks merge.")
+
+    except Exception as e:
+        print(f"[ERROR] Project tasks sync failed: {e}")
+        traceback.print_exc()
+        sync_errors.append("project_tasks")
+
     # ── 4. Time Entries (Timesheets) ───────────────────────────────────────────
     try:
         import datetime

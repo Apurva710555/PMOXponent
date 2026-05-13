@@ -281,8 +281,9 @@ def get_employee_project_history():
       - KEKA_PROJECT_RESOURCES_TABLE  (employeeId, projectId, startdate, enddate, comment)
       - KEKA_EMPLOYEES_TABLE             (id → displayName, employeeNumber)
       - KEKA_PROJECTS_TABLE              (id → name, code)
+      - KEKA_PROJECT_ALLOCATIONS_TABLE   (per-employee startDate, endDate)
 
-    Status logic: Active when enddate is NULL/empty, Inactive otherwise.
+    Start/End date priority: allocation dates → timesheet dates → project dates.
 
     Query params:
         employeeId — the employeeNumber (human-readable ID, e.g. 100052)
@@ -295,6 +296,7 @@ def get_employee_project_history():
     projects_table  = os.getenv("KEKA_PROJECTS_TABLE", "").strip()
     employee_table  = os.getenv("KEKA_EMPLOYEES_TABLE", "keka_employees").strip()
     time_table      = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries").strip()
+    alloc_table     = os.getenv("KEKA_PROJECT_ALLOCATIONS_TABLE", "keka_project_allocations").strip()
     catalog         = os.getenv("CATALOG_NAME", "").strip()
     schema          = os.getenv("SCHEMA_NAME", "").strip()
 
@@ -306,8 +308,10 @@ def get_employee_project_history():
 
     safe_emp_id = employee_id.replace("'", "''")
 
+    # Fully-qualified table references
+    A = f"`{catalog}`.`{schema}`.`{alloc_table}`"
+
     try:
-        # Using direct CTE query instead of old dead-code SQL (removed per code review L2-3)
         sql = f"""
             WITH emp AS (
                 SELECT id, displayName, employeeNumber
@@ -335,30 +339,25 @@ def get_employee_project_history():
                 p.code AS projectCode,
 
                 r.projectId,
-                CASE 
-                    WHEN MAX(p.ProjectStartDate) IS NULL OR MAX(p.ProjectStartDate) = '' OR MAX(p.ProjectStartDate) = 'None'
-                    THEN COALESCE(MAX(t.first_timesheet_date), '')
-                    ELSE MAX(p.ProjectStartDate)
-                END AS startdate,
-                
-                CASE 
-                    WHEN MAX(p.ProjectEndDate) IS NULL OR MAX(p.ProjectEndDate) = '' OR MAX(p.ProjectEndDate) = 'None'
-                    THEN COALESCE(MAX(t.last_timesheet_date), '')
-                    ELSE MAX(p.ProjectEndDate)
-                END AS enddate,
+
+                -- Per-employee allocation dates only (no fallback)
+                MAX(a.startDate) AS startdate,
+                MAX(a.endDate)   AS enddate,
+
                 r.name AS comment,
                 
                 CASE 
-                    WHEN MAX(p.ProjectEndDate) IS NOT NULL 
-                         AND MAX(p.ProjectEndDate) != '' 
-                         AND MAX(p.ProjectEndDate) != 'None' 
-                         AND CAST(SUBSTRING(MAX(p.ProjectEndDate), 1, 10) AS DATE) < CURRENT_DATE() 
+                    WHEN MAX(a.endDate) IS NOT NULL 
+                         AND MAX(a.endDate) != '' 
+                         AND MAX(a.endDate) != 'None'
+                         AND CAST(SUBSTRING(MAX(a.endDate), 1, 10) AS DATE) < CURRENT_DATE() 
                     THEN 'Inactive'
                     ELSE 'Active'
                 END AS project_status,
                 
                 COALESCE(MAX(t.actual_days_worked), 0) AS days_worked,
-                ROUND(COALESCE(MAX(t.total_minutes_worked), 0) / 60.0, 1) AS hours_worked
+                ROUND(COALESCE(MAX(t.total_minutes_worked), 0) / 60.0, 1) AS hours_worked,
+                MAX(a.allocationPercentage) AS allocationPercentage
 
             FROM emp e
 
@@ -371,6 +370,9 @@ def get_employee_project_history():
                 
             LEFT JOIN time_summary t
                 ON LOWER(t.projectId) = LOWER(r.projectId) AND LOWER(t.employeeId) = LOWER(r.employeeId)
+
+            LEFT JOIN {A} a
+                ON LOWER(a.projectId) = LOWER(r.projectId) AND LOWER(a.employeeId) = LOWER(r.employeeId)
 
             GROUP BY
                 e.displayName,

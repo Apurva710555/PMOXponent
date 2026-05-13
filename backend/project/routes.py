@@ -72,20 +72,21 @@ _INACTIVE_ACCOUNT_STATUSES = ("0", "2")
 @project_bp.route('/api/project/resources', methods=['GET'])
 def get_project_resources():
     """
-    Returns resource allocations from keka_project_resources enriched with
-    human-readable employee and project names using a Databricks SQL JOIN.
+    Returns resource allocations enriched with per-employee allocation dates
+    from the keka_project_allocations table, falling back to timesheet/project dates.
 
     Query params:
         projectId  — Keka project UUID to filter by (optional)
     """
     project_id = request.args.get('projectId', '').strip()
 
-    catalog  = os.getenv("CATALOG_NAME")
-    schema   = os.getenv("SCHEMA_NAME")
-    res_tbl  = os.getenv("KEKA_PROJECT_RESOURCES_TABLE", "keka_project_resources")
-    emp_tbl  = os.getenv("KEKA_EMPLOYEES_TABLE",          "keka_employees")
-    proj_tbl = os.getenv("KEKA_PROJECTS_TABLE",           "keka_projects")
-    time_tbl = os.getenv("KEKA_TIMEENTRIES_TABLE",        "keka_timeentries")
+    catalog   = os.getenv("CATALOG_NAME")
+    schema    = os.getenv("SCHEMA_NAME")
+    res_tbl   = os.getenv("KEKA_PROJECT_RESOURCES_TABLE", "keka_project_resources")
+    emp_tbl   = os.getenv("KEKA_EMPLOYEES_TABLE",          "keka_employees")
+    proj_tbl  = os.getenv("KEKA_PROJECTS_TABLE",           "keka_projects")
+    time_tbl  = os.getenv("KEKA_TIMEENTRIES_TABLE",        "keka_timeentries")
+    alloc_tbl = os.getenv("KEKA_PROJECT_ALLOCATIONS_TABLE", "keka_project_allocations")
 
     if not all([catalog, schema]):
         return jsonify({"status": "error", "message": "Database env vars missing"}), 500
@@ -95,6 +96,7 @@ def get_project_resources():
     E = f"`{catalog}`.`{schema}`.`{emp_tbl}`"
     P = f"`{catalog}`.`{schema}`.`{proj_tbl}`"
     T = f"`{catalog}`.`{schema}`.`{time_tbl}`"
+    A = f"`{catalog}`.`{schema}`.`{alloc_tbl}`"
 
     # Active SCD2 employee filter (enddate is null / empty)
     active_emp_cond  = "(e.enddate IS NULL OR e.enddate = '' OR LOWER(e.enddate) IN ('none','null'))"
@@ -128,18 +130,14 @@ def get_project_resources():
             )                                                               AS employeeName,
             e.accountStatus,
             COALESCE(NULLIF(p.name, ''), r.projectid)                      AS projectName,
-            CASE 
-                WHEN p.ProjectStartDate IS NULL OR p.ProjectStartDate = '' OR p.ProjectStartDate = 'None'
-                THEN t.first_timesheet_date
-                ELSE p.ProjectStartDate
-            END AS startdate,
-            
-            CASE 
-                WHEN p.ProjectEndDate IS NULL OR p.ProjectEndDate = '' OR p.ProjectEndDate = 'None'
-                THEN t.last_timesheet_date
-                ELSE p.ProjectEndDate
-            END AS enddate,
-            COALESCE(t.actual_days_worked, 0) AS days_worked
+
+            -- Per-employee allocation dates only (no fallback)
+            a.startDate AS startdate,
+            a.endDate   AS enddate,
+
+            COALESCE(t.actual_days_worked, 0) AS days_worked,
+            a.allocationPercentage,
+            a.billingRoleName
         FROM {R} r
         LEFT JOIN {E} e
             ON LOWER(r.employeeid) = LOWER(e.id)
@@ -149,6 +147,8 @@ def get_project_resources():
            AND {active_proj_cond}
         LEFT JOIN time_summary t
             ON LOWER(t.projectId) = LOWER(r.projectid) AND LOWER(t.employeeId) = LOWER(r.employeeid)
+        LEFT JOIN {A} a
+            ON LOWER(a.projectId) = LOWER(r.projectid) AND LOWER(a.employeeId) = LOWER(r.employeeid)
         {where}
     """
 
@@ -161,14 +161,19 @@ def get_project_resources():
             if acc_status in _INACTIVE_ACCOUNT_STATUSES:
                 emp_name += " (Ex-Employee)"
                 
+            raw_start = row.get("startdate")
+            raw_end   = row.get("enddate")
             result.append({
-                "employeeName": emp_name,
-                "projectName":  row.get("projectName")  or row.get("projectid")  or "—",
-                "name":         row.get("allocation")   or "—",
-                "startdate":    row.get("startdate"),
-                "enddate":      row.get("enddate"),
-                "daysWorked":   row.get("days_worked"),
+                "employeeName":         emp_name,
+                "projectName":          row.get("projectName")          or row.get("projectid")  or "—",
+                "name":                 row.get("allocation")           or "—",
+                "startdate":            raw_start if raw_start and str(raw_start).strip() not in ('', 'None', 'null') else "N/A",
+                "enddate":              raw_end   if raw_end   and str(raw_end).strip()   not in ('', 'None', 'null') else "N/A",
+                "daysWorked":           row.get("days_worked"),
+                "allocationPercentage": row.get("allocationPercentage"),
+                "billingRoleName":      row.get("billingRoleName"),
             })
         return jsonify({"status": "success", "data": result})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+

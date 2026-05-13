@@ -699,6 +699,7 @@ function _buildResourceTable(rows) {
         const val = r[c.key];
 
         if (c.key === "startdate" || c.key === "enddate") {
+          if (!val || val === "N/A") return `<td class="text-center">N/A</td>`;
           const formatted = _formatDateShort(val);
           return `<td class="text-center">${formatted}</td>`;
         }
