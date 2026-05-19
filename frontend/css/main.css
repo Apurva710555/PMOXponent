@@ -65,6 +65,12 @@ body {
   z-index: 10;
 }
 
+.sidebar-menu {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;   /* critical — lets flex child shrink below content size */
+}
+
 .sidebar-brand {
   font-size: 1.15rem;
   font-weight: 700;
@@ -1576,6 +1582,25 @@ border-right: 1px solid #f3f4f6;
    Sidebar & Sync
    ═══════════════════════════════════════════════════════ */
 
+/* DASHBOARD SUBMENU */
+.dash-submenu {
+  display: none;
+  flex-direction: column;
+  padding-left: 12px;
+}
+
+.dash-submenu.open {
+  display: flex;
+}
+
+.dash-submenu .sidebar-sub-link {
+  color: rgba(255,255,255,0.65) !important;
+}
+
+.dash-submenu .sidebar-sub-link:hover {
+  color: #fff !important;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -1583,7 +1608,7 @@ border-right: 1px solid #f3f4f6;
 }
 
 .sidebar-sync-wrap {
-  margin-top: auto;
+  flex-shrink: 0;
   margin-bottom: 30px;
   display: flex;
   justify-content: center;

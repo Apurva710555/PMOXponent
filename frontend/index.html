@@ -1,517 +1,617 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PMOXponent</title>
 
-  <title>PMOXponent</title>
+    <meta
+      name="description"
+      content="PMOXponent — Comprehensive resource, project, clients and allocation management platform by Exponentia AI."
+    />
 
-  <meta name="description"
-    content="PMOXponent — Comprehensive resource, project, clients and allocation management platform by Exponentia AI.">
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
 
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Main CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/main.css') }}?v=6"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='chatbot/chatbot.css') }}"
+    />
 
-  <!-- Main CSS -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='chatbot/chatbot.css') }}">
+    <!-- Dashboard Loader Styles -->
+    <style>
+      .dashboard-frame-wrap {
+        position: relative;
+        min-height: 800px;
+      }
 
-  <!-- Dashboard Loader Styles -->
-  <style>
-    .dashboard-frame-wrap {
-      position: relative;
-      min-height: 800px;
-    }
+      .dashboard-loader {
+        height: 800px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #6c757d;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+      }
+    </style>
+  </head>
 
-    .dashboard-loader {
-      height: 800px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      color: #6c757d;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border: 1px solid #e9ecef;
-    }
-  </style>
-
-</head>
-
-<body>
-
-  <div class="d-flex min-vh-100">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-
-      <div class="sidebar-brand">
-        <i class="bi bi-grid-3x3-gap-fill me-2"></i>
-        PMOXponent
-      </div>
-
-      <nav class="nav flex-column nav-pills py-2" id="sidebarTabs" role="tablist">
-
-        <!-- EMPLOYEE -->
-        <a class="nav-link active" data-bs-toggle="tab" href="#employee-tab" role="tab" id="empTabLink">
-
-          <i class="bi bi-people-fill"></i>
-          Employees
-
-        </a>
-
-        <!-- PROJECT -->
-        <a class="nav-link" data-bs-toggle="tab" href="#project-tab-pane" role="tab" id="projTabLink">
-
-          <i class="bi bi-folder-fill"></i>
-          Projects
-
-        </a>
-
-        <!-- DASHBOARD MENU -->
-        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
-          href="#dashboardsSubMenu" role="button" aria-expanded="false" aria-controls="dashboardsSubMenu"
-          id="dashboardsMenuToggle" onclick="document.getElementById('reportsTabLinkHidden').click()">
-
-          <span>
-            <i class="bi bi-bar-chart-fill"></i>
-            Dashboards
-          </span>
-
-          <i class="bi bi-chevron-down" style="font-size: 0.75rem;"></i>
-
-        </a>
-
-        <!-- Hidden parent tab -->
-        <a class="d-none" data-bs-toggle="tab" href="#reports-tab-pane" id="reportsTabLinkHidden">
-        </a>
-
-        <!-- DASHBOARD SUBMENU -->
-        <div class="collapse" id="dashboardsSubMenu">
-
-          <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
-
-            <!-- TIMESHEET -->
-            <a class="nav-link sidebar-sub-link active" id="report-timesheet-compliance-link" data-bs-toggle="tab"
-              href="#report-timesheet-compliance" role="tab"
-              onclick="document.getElementById('reportsTabLinkHidden').click()">
-
-              Timesheet Compliance
-
+  <body>
+    <div class="d-flex min-vh-100">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <i class="bi bi-grid-3x3-gap-fill me-2"></i>
+          PMOXponent
+        </div>
+        <div class="sidebar-menu">
+          <nav
+            class="nav flex-column nav-pills py-2"
+            id="sidebarTabs"
+            role="tablist"
+          >
+            <!-- EMPLOYEE -->
+            <a
+              class="nav-link active"
+              data-bs-toggle="tab"
+              href="#employee-tab"
+              role="tab"
+              id="empTabLink"
+            >
+              <i class="bi bi-people-fill"></i>
+              Employees
             </a>
 
-            <!-- WEEKLY -->
-            <a class="nav-link sidebar-sub-link" id="report-weekly-timesheet-link" data-bs-toggle="tab"
-              href="#report-weekly-timesheet" role="tab"
-              onclick="document.getElementById('reportsTabLinkHidden').click()">
-
-              Weekly Timesheet
-
+            <!-- PROJECT -->
+            <a
+              class="nav-link"
+              data-bs-toggle="tab"
+              href="#project-tab-pane"
+              role="tab"
+              id="projTabLink"
+            >
+              <i class="bi bi-folder-fill"></i>
+              Projects
             </a>
 
-            <!-- TALENT -->
-            <a class="nav-link sidebar-sub-link" id="report-talent-pool-link" data-bs-toggle="tab"
-              href="#report-talent-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+            <!-- DASHBOARD MENU -->
+            <a
+              class="nav-link d-flex justify-content-between align-items-center"
+              href="#dashboardsSubMenu"
+              role="button"
+              aria-expanded="false"
+              id="dashboardsMenuToggle"
+              onclick="toggleDashboardMenu(event)"
+            >
+              <span>
+                <i class="bi bi-bar-chart-fill"></i>
+                Dashboards
+              </span>
 
-              Talent Pool Overview
-
+              <i class="bi bi-chevron-down" style="font-size: 0.75rem"></i>
             </a>
 
-            <!-- FUTURE -->
-            <a class="nav-link sidebar-sub-link" id="report-future-pool-link" data-bs-toggle="tab"
-              href="#report-future-pool" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
-
-              Future Pool
-
+            <!-- Hidden parent tab -->
+            <a
+              class="d-none"
+              data-bs-toggle="tab"
+              href="#reports-tab-pane"
+              id="reportsTabLinkHidden"
+            >
             </a>
 
-            <!-- RESOURCE MASTER -->
-            <a class="nav-link sidebar-sub-link" id="report-resource-master-link" data-bs-toggle="tab"
-              href="#report-resource-master" role="tab"
-              onclick="document.getElementById('reportsTabLinkHidden').click()">
+            <!-- DASHBOARD SUBMENU -->
+            <div class="dash-submenu" id="dashboardsSubMenu">
+              <div class="nav flex-column nav-pills mt-1 mb-2" role="tablist">
+                <!-- OVERVIEW -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-overview-link"
+                  data-bs-toggle="tab"
+                  href="#report-overview"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Overview
+                </a>
 
-              Resource Master
+                <!-- TIMESHEET -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-timesheet-compliance-link"
+                  data-bs-toggle="tab"
+                  href="#report-timesheet-compliance"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Timesheet Compliance
+                </a>
 
-            </a>
+                <!-- WEEKLY -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-weekly-timesheet-link"
+                  data-bs-toggle="tab"
+                  href="#report-weekly-timesheet"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Weekly Timesheet
+                </a>
 
-            <!-- RESIGNED -->
-            <a class="nav-link sidebar-sub-link" id="report-resigned-link" data-bs-toggle="tab" href="#report-resigned"
-              role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+                <!-- TALENT -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-talent-pool-link"
+                  data-bs-toggle="tab"
+                  href="#report-talent-pool"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Talent Pool Overview
+                </a>
 
-              Resigned Resources
+                <!-- BLOCKED -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-blocked-resource-link"
+                  data-bs-toggle="tab"
+                  href="#report-blocked-resource"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Blocked Resources
+                </a>
 
-            </a>
+                <!-- FUTURE -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-future-pool-link"
+                  data-bs-toggle="tab"
+                  href="#report-future-pool"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Future Pool
+                </a>
 
-            <!-- DEMAND -->
-            <a class="nav-link sidebar-sub-link" id="report-demand-link" data-bs-toggle="tab" href="#report-demand"
-              role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+                <!-- RESOURCE MASTER -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-resource-master-link"
+                  data-bs-toggle="tab"
+                  href="#report-resource-master"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Resource Master
+                </a>
 
-              Demand Tracker
+                <!-- RESIGNED -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-resigned-link"
+                  data-bs-toggle="tab"
+                  href="#report-resigned"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Resigned Resources
+                </a>
 
-            </a>
+                <!-- DEMAND -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-demand-link"
+                  data-bs-toggle="tab"
+                  href="#report-demand"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Demand Tracker
+                </a>
 
-            <!-- UTILIZATION -->
-            <a class="nav-link sidebar-sub-link" id="report-utilization-link" data-bs-toggle="tab"
-              href="#report-utilization" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+                <!-- UTILIZATION -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-utilization-link"
+                  data-bs-toggle="tab"
+                  href="#report-utilization"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Resource Utilization
+                </a>
 
-              Resource Utilization
+                <!-- CERTIFICATION -->
+                <a
+                  class="nav-link sidebar-sub-link"
+                  id="report-certification-link"
+                  data-bs-toggle="tab"
+                  href="#report-certification"
+                  role="tab"
+                  onclick="
+                    document.getElementById('reportsTabLinkHidden').click()
+                  "
+                >
+                  Employee Certification
+                </a>
+              </div>
+            </div>
+          </nav>
+        </div>
+        <!-- SYNC -->
+        <div class="sidebar-sync-wrap">
+          <div class="sync-card" onclick="triggerSync()">
+            <div class="sync-main">
+              <span>Sync Data</span>
 
-            </a>
+              <i class="bi bi-arrow-repeat" id="syncIcon"></i>
+            </div>
 
-            <!-- CERTIFICATION -->
-            <a class="nav-link sidebar-sub-link" id="report-certification-link" data-bs-toggle="tab"
-              href="#report-certification" role="tab" onclick="document.getElementById('reportsTabLinkHidden').click()">
+            <div class="sync-time" id="lastSyncTime">Last Sync: —</div>
+          </div>
+        </div>
+      </aside>
 
-              Employee Certification
+      <!-- MAIN -->
+      <div class="main-content">
+        <!-- HEADER -->
+        <div class="app-header">
+          <div>
+            <h2>PMOXponent — Application &amp; Resource Management</h2>
 
-            </a>
-
+            <div class="subtitle">
+              Comprehensive resource, project, clients and allocation management
+              platform.
+            </div>
           </div>
 
+          <!-- CHAT BUTTON -->
+          <button class="ask-pmox-btn" onclick="togglePMOXChat()">
+            <i class="bi bi-chat-dots-fill"></i>
+            Ask PMOXponent
+          </button>
         </div>
 
-      </nav>
+        <!-- TOAST -->
+        <div id="syncToast" class="sync-toast" style="display: none"></div>
 
-      <!-- SYNC -->
-      <div class="sidebar-sync-wrap">
-
-        <div class="sync-card" onclick="triggerSync()">
-
-          <div class="sync-main">
-
-            <span>Sync Data</span>
-
-            <i class="bi bi-arrow-repeat" id="syncIcon"></i>
-
-          </div>
-
-          <div class="sync-time" id="lastSyncTime">
-
-            Last Sync: —
-
-          </div>
-
+        <!-- TAB CONTENT -->
+        <div class="tab-content tab-content-area">
+          {% include 'employee_tab/employee_tab.html' %} {% include
+          'project_tab/project_tab.html' %} {% include
+          'reports_tab/reports_tab.html' %}
         </div>
 
+        <!-- FOOTER -->
+        <div class="app-footer">© 2026 PMOXponent — Exponentia AI</div>
       </div>
-
-    </aside>
-
-    <!-- MAIN -->
-    <div class="main-content">
-
-      <!-- HEADER -->
-      <div class="app-header">
-
-        <div>
-
-          <h2>
-            PMOXponent — Application &amp; Resource Management
-          </h2>
-
-          <div class="subtitle">
-            Comprehensive resource, project, clients and allocation management platform.
-          </div>
-
-        </div>
-
-        <!-- CHAT BUTTON -->
-        <button class="ask-pmox-btn" onclick="togglePMOXChat()">
-
-          <i class="bi bi-chat-dots-fill"></i>
-          Ask PMOXponent
-
-        </button>
-
-      </div>
-
-      <!-- TOAS
-      <div id="syncToast"
-           class="sync-toast"
-           style="display:none">
-      </div>
-
-      <!-- TAB CONTENT -->
-      <div class="tab-content tab-content-area">
-
-        {% include 'employee_tab/employee_tab.html' %}
-        {% include 'project_tab/project_tab.html' %}
-        {% include 'reports_tab/reports_tab.html' %}
-
-      </div>
-
-      <!-- FOOTER -->
-      <div class="app-footer">
-        © 2026 PMOXponent — Exponentia AI
-      </div>
-
     </div>
 
-  </div>
+    {% include 'chatbot/chatbot.html' %}
 
-  {% include 'chatbot/chatbot.html' %}
+    <!-- Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Bootstrap -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='employee_tab/employee_tab.js') }}"></script>
+    <script src="{{ url_for('static', filename='project_tab/project_tab.js') }}"></script>
 
-  <!-- Scripts -->
-  <script src="{{ url_for('static', filename='employee_tab/employee_tab.js') }}"></script>
-  <script src="{{ url_for('static', filename='project_tab/project_tab.js') }}"></script>
+    <!-- DASHBOARD OPTIMIZATION SCRIPT -->
+    <script>
+      // ── Dashboard menu toggle (replaces Bootstrap collapse) ──
+      function toggleDashboardMenu(e) {
+        e.preventDefault();
 
-  <!-- DASHBOARD OPTIMIZATION SCRIPT -->
-  <script>
+        const btn = document.getElementById("dashboardsMenuToggle");
+        const menu = document.getElementById("dashboardsSubMenu");
+        const chevron = btn.querySelector(".bi-chevron-down, .bi-chevron-up");
 
-    async function triggerSync() {
+        const isOpen = menu.classList.toggle("open");
+        btn.setAttribute("aria-expanded", isOpen);
 
-      const card = document.querySelector('.sync-card');
-      const icon = document.getElementById('syncIcon');
-
-      card.style.opacity = "0.7";
-      icon.classList.add('spin');
-
-      try {
-
-        const res = await fetch('/api/sync', {
-          method: 'POST'
-        });
-
-        const data = await res.json();
-
-        _showToast(data.message || 'Sync started!', 'success');
-
-        _startSyncPolling();
-
-      } catch (err) {
-
-        _showToast('Sync failed: ' + err.message, 'error');
-
-        card.style.opacity = "1";
-        icon.classList.remove('spin');
+        if (chevron) {
+          chevron.classList.toggle("bi-chevron-down", !isOpen);
+          chevron.classList.toggle("bi-chevron-up", isOpen);
+        }
       }
-    }
+      async function triggerSync() {
+        const card = document.querySelector(".sync-card");
+        const icon = document.getElementById("syncIcon");
 
-    function _startSyncPolling() {
-
-      const interval = setInterval(async () => {
+        card.style.opacity = "0.7";
+        icon.classList.add("spin");
 
         try {
+          const res = await fetch("/api/sync", {
+            method: "POST",
+          });
 
-          const res = await fetch('/api/sync/status');
           const data = await res.json();
 
-          if (!data.running) {
+          _showToast(data.message || "Sync started!", "success");
 
-            clearInterval(interval);
+          _startSyncPolling();
+        } catch (err) {
+          _showToast("Sync failed: " + err.message, "error");
 
-            const now = new Date().toLocaleString('en-IN', {
-              day: '2-digit',
-              month: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
+          card.style.opacity = "1";
+          icon.classList.remove("spin");
+        }
+      }
 
-            localStorage.setItem('last_sync_time', now);
+      // function _startSyncPolling() {
 
-            updateLastSyncTime();
+      //   const interval = setInterval(async () => {
 
-            const card = document.querySelector('.sync-card');
-            const icon = document.getElementById('syncIcon');
+      //     try {
 
-            card.style.opacity = "1";
-            icon.classList.remove('spin');
+      //       const res = await fetch('/api/sync/status');
+      //       const data = await res.json();
 
+      //       if (!data.running) {
+
+      //         clearInterval(interval);
+
+      //         const now = new Date().toLocaleString('en-IN', {
+      //           day: '2-digit',
+      //           month: 'numeric',
+      //           year: 'numeric',
+      //           hour: '2-digit',
+      //           minute: '2-digit'
+      //         });
+
+      //         localStorage.setItem('last_sync_time', now);
+
+      //         updateLastSyncTime();
+
+      //         const card = document.querySelector('.sync-card');
+      //         const icon = document.getElementById('syncIcon');
+
+      //         card.style.opacity = "1";
+      //         icon.classList.remove('spin');
+
+      //         _showToast(
+      //           'Sync completed! Refreshing data...',
+      //           'success'
+      //         );
+
+      //         setTimeout(() => {
+      //           location.reload();
+      //         }, 2000);
+      //       }
+
+      //     } catch (e) {
+
+      //       console.error("Polling error:", e);
+
+      //     }
+
+      //   }, 3000);
+      // }
+      function _startSyncPolling() {
+        const MAX_WAIT_MS = 45 * 60 * 1000; // give up after 45 min
+        const POLL_MS = 3000;
+        const startedAt = Date.now();
+
+        let intervalId = null;
+
+        // ✅ Core poll logic — extracted so visibility handler can call it too
+        async function doPoll() {
+          // Safety: stop polling if we've waited too long
+          if (Date.now() - startedAt > MAX_WAIT_MS) {
+            cleanup();
             _showToast(
-              'Sync completed! Refreshing data...',
-              'success'
+              "Sync is taking unusually long. Check server logs.",
+              "error",
             );
-
-            setTimeout(() => {
-              location.reload();
-            }, 2000);
+            resetSyncUI();
+            return;
           }
 
-        } catch (e) {
+          try {
+            const res = await fetch("/api/sync/status");
+            const data = await res.json();
 
-          console.error("Polling error:", e);
+            if (!data.running) {
+              cleanup();
 
-        }
+              const now = new Date().toLocaleString("en-IN", {
+                day: "2-digit",
+                month: "numeric",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              localStorage.setItem("last_sync_time", now);
+              updateLastSyncTime();
+              resetSyncUI();
 
-      }, 3000);
-    }
-
-    function _showToast(msg, type) {
-
-      const toast = document.getElementById('syncToast');
-
-      toast.textContent = msg;
-
-      toast.className =
-        'sync-toast ' +
-        (type === 'error'
-          ? 'toast-error'
-          : 'toast-success');
-
-      toast.style.display = 'block';
-
-      setTimeout(() => {
-        toast.style.display = 'none';
-      }, 6000);
-    }
-
-    // DASHBOARD LAZY LOADING
-    document.addEventListener('DOMContentLoaded', () => {
-      // Fix: clear sub-link highlights when top-level tabs are clicked
-      document.querySelectorAll('#sidebarTabs > .nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-          document.querySelectorAll('.sidebar-sub-link')
-            .forEach(sl => sl.classList.remove('active'));
-        });
-      });
-
-      // Fix: clear top-level highlights when a sub-link is clicked
-      document.querySelectorAll('.sidebar-sub-link').forEach(link => {
-        link.addEventListener('click', () => {
-          document.querySelectorAll('#sidebarTabs > .nav-link')
-            .forEach(tl => tl.classList.remove('active'));
-        });
-      });
-      // Lazy-load dashboard iframes on tab change
-
-      const loadedTabs = new Set();
-
-      const dashboardTabs = document.querySelectorAll(
-        '#dashboardsSubMenu [data-bs-toggle="tab"]'
-      );
-
-      dashboardTabs.forEach(trigger => {
-
-        trigger.addEventListener('shown.bs.tab', (e) => {
-
-          const targetId =
-            e.target.getAttribute('data-bs-target') ||
-            e.target.getAttribute('href');
-
-          const activePane =
-            document.querySelector(targetId);
-
-          if (!activePane) return;
-
-          // Reset active panes
-          document
-            .querySelectorAll(
-              '#reportSubTabsContent .tab-pane'
-            )
-            .forEach(pane => {
-
-              pane.classList.remove('show', 'active');
-
-            });
-
-          activePane.classList.add('show', 'active');
-
-          // Lazy load only once
-          if (!loadedTabs.has(targetId)) {
-
-            const iframe =
-              activePane.querySelector(
-                'iframe[data-src]'
-              );
-
-            if (iframe) {
-
-              const loader =
-                activePane.querySelector(
-                  '.dashboard-loader'
+              // ✅ Use the result field to show the right toast
+              if (data.result === "error") {
+                _showToast(
+                  "Sync completed with errors. Check server logs.",
+                  "error",
                 );
-
-              iframe.src = iframe.dataset.src;
-
-              iframe.onload = () => {
-
-                iframe.style.display = 'block';
-
-                if (loader) {
-                  loader.style.display = 'none';
-                }
-
-              };
-
-              loadedTabs.add(targetId);
+              } else {
+                _showToast("Sync completed! Refreshing data...", "success");
+                setTimeout(() => location.reload(), 2000);
+              }
             }
+          } catch (e) {
+            console.error("Polling error:", e);
           }
+        }
 
+        function cleanup() {
+          clearInterval(intervalId);
+          document.removeEventListener("visibilitychange", onVisibilityChange);
+        }
+
+        function resetSyncUI() {
+          const card = document.querySelector(".sync-card");
+          const icon = document.getElementById("syncIcon");
+          card.style.opacity = "1";
+          icon.classList.remove("spin");
+        }
+
+        // ✅ When user comes back to the tab, poll immediately instead of waiting
+        // This is the fix for the 60-second gap caused by browser throttling
+        function onVisibilityChange() {
+          if (!document.hidden) {
+            doPoll();
+          }
+        }
+
+        document.addEventListener("visibilitychange", onVisibilityChange);
+
+        // Normal 3-second polling (only fires reliably when tab is active)
+        intervalId = setInterval(doPoll, POLL_MS);
+      }
+
+      function _showToast(msg, type) {
+        const toast = document.getElementById("syncToast");
+
+        toast.textContent = msg;
+
+        toast.className =
+          "sync-toast " + (type === "error" ? "toast-error" : "toast-success");
+
+        toast.style.display = "block";
+
+        setTimeout(() => {
+          toast.style.display = "none";
+        }, 6000);
+      }
+
+      // DASHBOARD LAZY LOADING
+      document.addEventListener("DOMContentLoaded", () => {
+        // Remove sub-link active states when top tabs clicked
+        document
+          .querySelectorAll(
+            "#sidebarTabs > .nav-link:not(#dashboardsMenuToggle)",
+          )
+          .forEach((link) => {
+            link.addEventListener("click", () => {
+              document
+                .querySelectorAll(".sidebar-sub-link")
+                .forEach((sl) => sl.classList.remove("active"));
+            });
+          });
+
+        // Remove top-level active states when dashboard clicked
+        document.querySelectorAll(".sidebar-sub-link").forEach((link) => {
+          link.addEventListener("click", () => {
+            document
+              .querySelectorAll("#sidebarTabs > .nav-link")
+              .forEach((tl) => tl.classList.remove("active"));
+          });
         });
 
-      });
+        // Lazy loading dashboards
+        const loadedTabs = new Set();
 
-      // Load first active dashboard automatically
-      const firstActive = document.querySelector(
-        '#reportSubTabsContent .tab-pane.show.active'
-      );
+        const dashboardTabs = document.querySelectorAll(
+          '#dashboardsSubMenu [data-bs-toggle="tab"]',
+        );
 
-      if (firstActive) {
+        dashboardTabs.forEach((trigger) => {
+          trigger.addEventListener("shown.bs.tab", (e) => {
+            const targetId =
+              e.target.getAttribute("data-bs-target") ||
+              e.target.getAttribute("href");
 
-        const iframe =
-          firstActive.querySelector(
-            'iframe[data-src]'
-          );
+            const activePane = document.querySelector(targetId);
 
-        if (iframe) {
+            if (!activePane) return;
 
-          iframe.src = iframe.dataset.src;
+            // Reset panes
+            document
+              .querySelectorAll("#reportSubTabsContent .tab-pane")
+              .forEach((pane) => {
+                pane.classList.remove("show", "active");
+              });
 
-          iframe.onload = () => {
+            activePane.classList.add("show", "active");
 
-            iframe.style.display = 'block';
+            // Lazy load only once
+            if (!loadedTabs.has(targetId)) {
+              const iframe = activePane.querySelector("iframe[data-src]");
 
-            const loader =
-              firstActive.querySelector(
-                '.dashboard-loader'
-              );
+              if (iframe) {
+                const loader = activePane.querySelector(".dashboard-loader");
 
-            if (loader) {
-              loader.style.display = 'none';
+                iframe.src = iframe.dataset.src;
+
+                iframe.onload = () => {
+                  iframe.style.display = "block";
+
+                  if (loader) {
+                    loader.style.display = "none";
+                  }
+                };
+
+                loadedTabs.add(targetId);
+              }
             }
+          });
+        });
+      });
+    </script>
 
-          };
+    <!-- CHATBOT -->
+    <script src="{{ url_for('static', filename='chatbot/chatbot.js') }}"></script>
 
-          loadedTabs.add('#' + firstActive.id);
+    <!-- LAST SYNC -->
+    <script>
+      function updateLastSyncTime() {
+        const el = document.getElementById("lastSyncTime");
+
+        const last = localStorage.getItem("last_sync_time");
+
+        if (last) {
+          el.textContent = "Last Sync : " + last;
         }
       }
 
-    });
-
-  </script>
-
-  <!-- CHATBOT -->
-  <script src="{{ url_for('static', filename='chatbot/chatbot.js') }}"></script>
-
-  <!-- LAST SYNC -->
-  <script>
-
-    function updateLastSyncTime() {
-
-      const el =
-        document.getElementById('lastSyncTime');
-
-      const last =
-        localStorage.getItem('last_sync_time');
-
-      if (last) {
-        el.textContent = "Last Sync : " + last;
-      }
-    }
-
-    document.addEventListener(
-      "DOMContentLoaded",
-      updateLastSyncTime
-    );
-
-  </script>
-
-</body>
-
+      document.addEventListener("DOMContentLoaded", updateLastSyncTime);
+    </script>
+  </body>
 </html>

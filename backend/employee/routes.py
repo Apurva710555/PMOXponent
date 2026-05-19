@@ -68,20 +68,24 @@ def get_employee_timesheet():
         schema  = os.getenv("SCHEMA_NAME")
         time_table = os.getenv("KEKA_TIMEENTRIES_TABLE", "keka_timeentries")
         proj_table = os.getenv("KEKA_PROJECTS_TABLE", "keka_projects")
+        tasks_table = os.getenv("KEKA_PROJECT_TASKS_TABLE", "keka_project_tasks")
         
         safe_emp_id = employee_id.replace("'", "''")
         safe_from   = from_date.replace("'", "''")
         safe_to     = to_date.replace("'", "''")
         
-        # Query time entries from Databricks and join with projects for the name
+        # Query time entries from Databricks and join with projects and tasks for the names
         sql = f"""
             SELECT 
                 t.*,
-                COALESCE(p.name, t.projectId) AS projectName
+                COALESCE(p.name, t.projectId) AS projectName,
+                COALESCE(task.name, t.taskId) AS taskName
             FROM `{catalog}`.`{schema}`.`{time_table}` t
             LEFT JOIN `{catalog}`.`{schema}`.`{proj_table}` p
                 ON LOWER(t.projectId) = LOWER(p.id)
                 AND (p.enddate IS NULL OR p.enddate = '' OR p.enddate = 'None')
+            LEFT JOIN `{catalog}`.`{schema}`.`{tasks_table}` task
+                ON LOWER(t.taskId) = LOWER(task.id)
             WHERE LOWER(t.employeeId) = LOWER('{safe_emp_id}')
               AND t.date >= '{safe_from}'
               AND t.date <= '{safe_to}'

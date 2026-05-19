@@ -33,43 +33,53 @@ app.register_blueprint(employee_bp)
 app.register_blueprint(project_bp)
 app.register_blueprint(chatbot_bp)
 
-# Track sync status
-_sync_lock = threading.Lock()
+# Track sync state
+_sync_lock    = threading.Lock()
 _sync_running = False
+_sync_result  = None   # 'success' | 'error' | None
+
 
 # Base Route
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 # On-demand Keka Sync endpoint
 @app.route("/api/sync", methods=["POST"])
 def trigger_sync():
-    global _sync_running
-    if _sync_running:
-        return jsonify({"status": "info", "message": "Sync already in progress..."}), 200
+    global _sync_running, _sync_result
+
+    # ✅ Check AND set inside the lock — eliminates the race condition
+    with _sync_lock:
+        if _sync_running:
+            return jsonify({"status": "info", "message": "Sync already in progress..."}), 200
+        _sync_running = True
+        _sync_result  = None   # reset previous result
 
     def _run_sync():
-        global _sync_running
-        with _sync_lock:
-            _sync_running = True
-            try:
-                print("[INFO] Manual sync triggered by user.")
-                sync_keka_data_to_dbx()
-                print("[INFO] Manual sync completed successfully.")
-            except Exception as e:
-                print(f"[ERROR] Sync failed: {e}")
-            finally:
-                _sync_running = False
+        global _sync_running, _sync_result
+        try:
+            print("[INFO] Manual sync triggered by user.")
+            success = sync_keka_data_to_dbx()
+            _sync_result = "success" if success is not False else "error"
+            print(f"[INFO] Manual sync completed. Result: {_sync_result}")
+        except Exception as e:
+            print(f"[ERROR] Sync failed: {e}")
+            _sync_result = "error"
+        finally:
+            _sync_running = False   # always release, even on crash
 
     threading.Thread(target=_run_sync, daemon=True).start()
-    return jsonify({"status": "success", "message": "Sync started in background. Data will refresh shortly."}), 200
+    return jsonify({"status": "success", "message": "Sync started in background."}), 200
+
 
 @app.route("/api/sync/status", methods=["GET"])
 def sync_status():
-    global _sync_running
-    return jsonify({"running": _sync_running})
-
+    return jsonify({
+        "running": _sync_running,
+        "result":  _sync_result   # ✅ frontend now knows success vs error
+    })
+    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)
-

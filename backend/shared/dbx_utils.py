@@ -486,6 +486,19 @@ def scd2_sync_employees(table_name, incoming_data):
                 col_defs = ", ".join([f"`{c}` STRING" for c in all_cols])
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {full_table} ({col_defs})")
 
+                try:
+                    cursor.execute(f"SELECT * FROM {full_table} LIMIT 0")
+                    existing_cols = {d[0].lower() for d in cursor.description}
+                    for col in all_cols:
+                        if col.lower() not in existing_cols:
+                            try:
+                                cursor.execute(f"ALTER TABLE {full_table} ADD COLUMN `{col}` STRING")
+                                print(f"[INFO] Migration: added missing column `{col}` to {table_name}")
+                            except Exception as alt_e:
+                                print(f"[WARN] Failed to add column {col}: {alt_e}")
+                except Exception as e:
+                    print(f"[WARN] Could not perform schema migration check: {e}")
+
                 # ── Step 2: Load active rows ───────────────────────
                 cursor.execute(
                     f"SELECT * FROM {full_table} "
@@ -738,6 +751,19 @@ def scd2_sync_projects(table_name, incoming_data):
 
                 col_defs = ", ".join([f"`{c}` STRING" for c in all_cols])
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {full_table} ({col_defs})")
+
+                try:
+                    cursor.execute(f"SELECT * FROM {full_table} LIMIT 0")
+                    existing_cols = {d[0].lower() for d in cursor.description}
+                    for col in all_cols:
+                        if col.lower() not in existing_cols:
+                            try:
+                                cursor.execute(f"ALTER TABLE {full_table} ADD COLUMN `{col}` STRING")
+                                print(f"[INFO] Migration: added missing column `{col}` to {table_name}")
+                            except Exception as alt_e:
+                                print(f"[WARN] Failed to add column {col}: {alt_e}")
+                except Exception as e:
+                    print(f"[WARN] Could not perform schema migration check: {e}")
 
                 cursor.execute(
                     f"SELECT * FROM {full_table} "
